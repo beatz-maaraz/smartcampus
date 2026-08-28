@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Function to check roles by reading the user's document
+    function hasRole(role) {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    // Function to retrieve the roll number (id) associated with the Auth UID
+    function getRollNumber() {
+      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.id;
+    }
+
+    // Admins have full access to everything
+    match /{document=**} {
+      allow read, write: if hasRole('admin');
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      // Any authenticated user can read their own profile, or faculty/admin can read all
+      allow read: if request.auth != null && (request.auth.uid == userId || hasRole('faculty') || hasRole('admin'));
+      // Users can create their own profile initially. Once created, only admins can change role.
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+    }
+
+    // Complaints Collection
+    match /complaints/{complaintId} {
+      // Faculty and Admin can read all complaints. Students can only read their own.
+      allow read: if request.auth != null && (hasRole('faculty') || hasRole('admin') || resource.data.studentId == getRollNumber());
+      
+      // Students can create complaints for themselves.
+      allow create: if request.auth != null && request.resource.data.studentId == getRollNumber();
+      
+      // Faculty and Admin can update complaints (e.g. status, remarks)
+      allow update: if hasRole('faculty') || hasRole('admin');
+    }
+
+    // Incidents Collection (SOS)
+    match /incidents/{incidentId} {
+      // Faculty and Admin can read all incidents. Students can only read their own.
+      allow read: if request.auth != null && (hasRole('faculty') || hasRole('admin') || resource.data.userId.matches('^' + getRollNumber() + '.*'));
+      
+      // Allow any authenticated user to create or update (stream location) an incident
+      allow create, update: if request.auth != null;
+    }
+    
+    // Notices Collection
+    match /notices/{noticeId} {
+      // Everyone can read notices
+      allow read: if request.auth != null;
+      
+      // Faculty and Admin can create/update/delete notices
+      allow write: if hasRole('faculty') || hasRole('admin');
+    }
+  }
+}

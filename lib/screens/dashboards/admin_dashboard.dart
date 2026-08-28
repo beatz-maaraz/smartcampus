@@ -73,8 +73,10 @@ class AdminHomeTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
     final data = context.watch<CampusDataService>();
-    final user = auth.currentUser!;
+    final user = auth.currentUser;
+    if (user == null) return const SizedBox.shrink(); // Prevent crash during auth transition
     final report = data.globalAttendanceReport();
+    final activeIncidents = data.incidents.where((i) => i.status != IncidentStatus.resolved).toList();
 
     return Scaffold(
       body: RefreshIndicator(
@@ -116,13 +118,13 @@ class AdminHomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const SectionHeader(title: '🚨 CRITICAL: Active SOS Incidents'),
-            if (data.incidents.isEmpty)
+            if (activeIncidents.isEmpty)
               const Card(
                   child: Padding(
                       padding: EdgeInsets.all(14),
                       child: Text('No active incidents at the moment.')))
             else ...[
-              ...data.incidents.map(
+              ...activeIncidents.map(
                   (incident) => IncidentCard(incident: incident, data: data)),
             ],
             const SizedBox(height: 24),
@@ -135,6 +137,12 @@ class AdminHomeTab extends StatelessWidget {
               mainAxisSpacing: 12,
               childAspectRatio: 1.0,
               children: [
+                ModuleCard(
+                  title: 'Create User',
+                  icon: Icons.person_add_outlined,
+                  color: AppColors.safe,
+                  onTap: () => _createUser(context, auth),
+                ),
                 ModuleCard(
                   title: 'Drop Location Pin',
                   icon: Icons.add_location_alt_outlined,
@@ -198,6 +206,69 @@ class AdminHomeTab extends StatelessWidget {
                             .toList(),
                       ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _createUser(BuildContext context, AuthService auth) {
+    final idController = TextEditingController();
+    final nameController = TextEditingController();
+    final passwordController = TextEditingController();
+    UserRole role = UserRole.student;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Create New User'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<UserRole>(
+                  value: role,
+                  decoration: const InputDecoration(labelText: 'Role'),
+                  items: [UserRole.student, UserRole.faculty].map((r) => DropdownMenuItem(value: r, child: Text(r.label))).toList(),
+                  onChanged: (v) => setState(() => role = v ?? role),
+                ),
+                const SizedBox(height: 10),
+                TextField(controller: idController, decoration: const InputDecoration(labelText: 'ID (e.g., student1)')),
+                const SizedBox(height: 10),
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Full Name')),
+                const SizedBox(height: 10),
+                TextField(controller: passwordController, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                if (idController.text.trim().isEmpty || passwordController.text.isEmpty) return;
+                
+                // Show loading
+                showDialog(context: ctx, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+                
+                final error = await auth.adminCreateUser(
+                  role: role,
+                  id: idController.text.trim(),
+                  password: passwordController.text,
+                  name: nameController.text.trim().isEmpty ? 'User ${idController.text}' : nameController.text.trim(),
+                );
+                
+                Navigator.pop(ctx); // pop loading dialog
+                
+                if (error != null) {
+                  _toast(context, error);
+                } else {
+                  Navigator.pop(ctx); // pop create dialog
+                  _toast(context, '${role.label} created successfully!');
+                }
+              },
+              child: const Text('Create'),
             ),
           ],
         ),

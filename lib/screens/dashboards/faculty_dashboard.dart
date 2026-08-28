@@ -55,6 +55,7 @@ class FacultyHomeTab extends StatelessWidget {
     final data = context.watch<CampusDataService>();
     final user = auth.currentUser!;
     final todaysClasses = data.todaysTimetable();
+    final activeIncidents = data.incidents.where((i) => i.status != IncidentStatus.resolved).toList();
 
     return Scaffold(
       body: SafeArea(
@@ -126,13 +127,13 @@ class FacultyHomeTab extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               const SectionHeader(title: '🚨 CRITICAL: Active SOS Incidents'),
-              if (data.incidents.isEmpty)
+              if (activeIncidents.isEmpty)
                 const Card(
                     child: Padding(
                         padding: EdgeInsets.all(14),
                         child: Text('No active incidents at the moment.')))
               else ...[
-                ...data.incidents.map(
+                ...activeIncidents.map(
                     (incident) => IncidentCard(incident: incident, data: data)),
               ],
               const SizedBox(height: 24),
@@ -462,8 +463,9 @@ class FacultyProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
-    final user = auth.currentUser!;
-    
+    final user = auth.currentUser;
+    if (user == null) return const SizedBox.shrink();
+
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(kPad),

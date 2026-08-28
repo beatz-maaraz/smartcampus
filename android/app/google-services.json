@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "721433910152",
+    "project_id": "campus-bfa74",
+    "storage_bucket": "campus-bfa74.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:721433910152:android:d4af9c6ce5fdb86f25383d",
+        "android_client_info": {
+          "package_name": "com.example.ai_campus_assistant"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJkgd_UBbgP_l9c_tLfRIjKsz4xYFlo2k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

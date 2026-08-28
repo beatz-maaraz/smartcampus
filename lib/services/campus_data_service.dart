@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:crypto/crypto.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/constants.dart';
 import '../models/models.dart';
 import 'google_drive_service.dart';
@@ -74,7 +76,79 @@ class CampusDataService extends ChangeNotifier {
     // ignore: avoid_print
     print('[Persistence] Startup complete — currently holding '
         '${_students.length} students, ${_attendance.length} attendance records.');
+        
+    _initFirebaseStreams();
     notifyListeners();
+  }
+
+  StreamSubscription? _complaintsSub;
+  StreamSubscription? _incidentsSub;
+  StreamSubscription? _noticesSub;
+  StreamSubscription? _authSub;
+
+  void _initFirebaseStreams() {
+    _authSub?.cancel();
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) async {
+      _complaintsSub?.cancel();
+      _incidentsSub?.cancel();
+      _noticesSub?.cancel();
+
+      if (user == null) {
+        _complaints.clear();
+        _incidents.clear();
+        _notices.clear();
+        notifyListeners();
+        return;
+      }
+      
+      try {
+        // Fetch role from Firestore instead of token claims since we removed cloud functions
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final role = userDoc.data()?['role'] as String?;
+        final rollNumber = userDoc.data()?['id'] as String?;
+        
+        Query<Map<String, dynamic>> complaintsQuery = FirebaseFirestore.instance.collection('complaints');
+        Query<Map<String, dynamic>> incidentsQuery = FirebaseFirestore.instance.collection('incidents');
+        
+        if (role == 'student' && rollNumber != null) {
+          complaintsQuery = complaintsQuery.where('studentId', isEqualTo: rollNumber);
+          // Query incidents by matching userId prefix since they are stored as rollNumber_name
+          incidentsQuery = incidentsQuery
+              .where('userId', isGreaterThanOrEqualTo: rollNumber)
+              .where('userId', isLessThanOrEqualTo: '$rollNumber\uf8ff');
+        }
+        
+        _complaintsSub = complaintsQuery.snapshots().listen((snapshot) {
+          _complaints.clear();
+          for (var doc in snapshot.docs) {
+            _complaints.add(Complaint.fromJson({...doc.data(), 'id': doc.id}));
+          }
+          notifyListeners();
+        }, onError: (e) => debugPrint("Complaints error: $e"));
+
+        _incidentsSub = incidentsQuery.snapshots().listen((snapshot) {
+          _incidents.clear();
+          for (var doc in snapshot.docs) {
+            try {
+              _incidents.add(Incident.fromJson({...doc.data(), 'id': doc.id}));
+            } catch (e) {
+              debugPrint("Failed to parse incident ${doc.id}: $e");
+            }
+          }
+          notifyListeners();
+        }, onError: (e) => debugPrint("Incidents error: $e"));
+        
+        _noticesSub = FirebaseFirestore.instance.collection('notices').snapshots().listen((snapshot) {
+          _notices.clear();
+          for (var doc in snapshot.docs) {
+            _notices.add(NoticeItem.fromJson({...doc.data(), 'id': doc.id}));
+          }
+          notifyListeners();
+        }, onError: (e) => debugPrint("Notices error: $e"));
+      } catch (e) {
+        debugPrint("Firebase streams init error: $e");
+      }
+    });
   }
 
   /// Manually pulls the latest data from Drive (or Local) and updates the UI.
@@ -220,18 +294,11 @@ class CampusDataService extends ChangeNotifier {
   List<Complaint> get complaints => List.unmodifiable(_complaints);
 
   void addComplaint(Complaint complaint) {
-    _complaints.insert(0, complaint); // Newest first
-    notifyListeners();
-    _persist();
+    FirebaseFirestore.instance.collection('complaints').doc(complaint.id).set(complaint.toJson());
   }
 
   void updateComplaint(Complaint updated) {
-    final idx = _complaints.indexWhere((c) => c.id == updated.id);
-    if (idx != -1) {
-      _complaints[idx] = updated;
-      notifyListeners();
-      _persist();
-    }
+    FirebaseFirestore.instance.collection('complaints').doc(updated.id).set(updated.toJson());
   }
 
   // ---------------------------------------------------------------------
@@ -241,14 +308,7 @@ class CampusDataService extends ChangeNotifier {
   List<Incident> get incidents => List.unmodifiable(_incidents);
 
   void addOrUpdateIncident(Incident incident) {
-    final idx = _incidents.indexWhere((i) => i.id == incident.id);
-    if (idx == -1) {
-      _incidents.insert(0, incident); // Newest first
-    } else {
-      _incidents[idx] = incident;
-    }
-    notifyListeners();
-    _persist();
+    FirebaseFirestore.instance.collection('incidents').doc(incident.id).set(incident.toJson());
   }
 
   Future<String?> createSosFolder(String userId, DateTime timestamp) async {
@@ -527,30 +587,17 @@ class CampusDataService extends ChangeNotifier {
   // ---------------------------------------------------------------------
   // NOTICES  (Faculty: department-specific, Admin: campus-wide broadcast)
   // ---------------------------------------------------------------------
-  final List<NoticeItem> _notices = [
-    NoticeItem(
-        id: 'n1',
-        title: 'Fee Payment Deadline Extended',
-        body: 'Last date extended to next Friday.',
-        postedBy: 'Admin Office',
-        scope: 'global',
-        postedOn: DateTime.now().subtract(const Duration(hours: 5))),
-  ];
-
+  final List<NoticeItem> _notices = [];
   List<NoticeItem> get notices => List.unmodifiable(_notices);
 
   /// Faculty action: Post Department-Specific Notice (§4.2)
   void postDepartmentNotice(NoticeItem item) {
-    _notices.insert(0, item);
-    notifyListeners();
-    _persist();
+    FirebaseFirestore.instance.collection('notices').doc(item.id).set(item.toJson());
   }
 
   /// Admin action: Write & Broadcast Notice to Entire Campus (§6.1)
   void broadcastNotice(NoticeItem item) {
-    _notices.insert(0, item);
-    notifyListeners();
-    _persist();
+    FirebaseFirestore.instance.collection('notices').doc(item.id).set(item.toJson());
   }
 
   // ---------------------------------------------------------------------

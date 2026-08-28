@@ -261,21 +261,36 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                           scrollDirection: Axis.horizontal,
                           itemCount: widget.incident.photoUrls.length,
                           separatorBuilder: (ctx, idx) => const SizedBox(width: 12),
-                          itemBuilder: (ctx, idx) => ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.network(
-                              widget.incident.photoUrls[idx],
-                              height: 100,
-                              width: 140,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                height: 100,
-                                width: 140,
-                                color: Colors.grey.shade200,
-                                child: const Icon(Icons.broken_image, color: Colors.grey),
+                          itemBuilder: (ctx, idx) {
+                            final photoUrl = widget.incident.photoUrls[idx];
+                            return GestureDetector(
+                              onTap: () async {
+                                final uri = Uri.parse(photoUrl);
+                                try {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to open photo.')));
+                                  }
+                                }
+                              },
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.network(
+                                  photoUrl,
+                                  height: 100,
+                                  width: 140,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Container(
+                                    height: 100,
+                                    width: 140,
+                                    color: Colors.grey.shade200,
+                                    child: const Icon(Icons.broken_image, color: Colors.grey),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
+                            );
+                          },
                         ),
                       )
                     else
