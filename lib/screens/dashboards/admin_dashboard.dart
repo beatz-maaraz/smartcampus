@@ -7,6 +7,8 @@ import '../../models/models.dart';
 import '../../widgets/widgets.dart';
 import '../modules/chatbot_screen.dart';
 import '../modules/notice_screen.dart';
+import '../modules/anti_ragging/anti_ragging_dashboard.dart';
+
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
 
@@ -160,6 +162,15 @@ class AdminHomeTab extends StatelessWidget {
                   icon: Icons.campaign_outlined,
                   color: AppColors.primaryDark,
                   onTap: () => _broadcast(context, data, user),
+                ),
+                ModuleCard(
+                  title: 'Anti-Ragging',
+                  icon: Icons.shield_outlined,
+                  color: AppColors.danger,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const AntiRaggingDashboard()),
+                  ),
                 ),
               ],
             ),

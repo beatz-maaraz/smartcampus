@@ -9,6 +9,7 @@ import '../modules/timetable_screen.dart';
 import '../modules/student_management_screen.dart';
 import '../modules/study_materials_screen.dart';
 import '../modules/chatbot_screen.dart';
+import '../modules/anti_ragging/anti_ragging_dashboard.dart';
 import '../modules/notice_screen.dart';
 
 class FacultyDashboard extends StatefulWidget {
@@ -56,148 +57,159 @@ class FacultyHomeTab extends StatelessWidget {
     final todaysClasses = data.todaysTimetable();
 
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await data.refresh();
-        },
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: kPad, vertical: 8),
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Hello, ${user.name}',
-                        style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(height: 4),
-                    const Text('Faculty Dashboard',
-                        style: TextStyle(
-                            fontSize: 15, color: AppColors.textSecondary)),
-                  ],
-                ),
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                  child: Text(
-                    user.name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await data.refresh();
+          },
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: kPad, vertical: 8),
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Hello, ${user.name}',
+                          style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary)),
+                      const SizedBox(height: 4),
+                      const Text('Faculty Dashboard',
+                          style: TextStyle(
+                              fontSize: 15, color: AppColors.textSecondary)),
+                    ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const SectionHeader(title: "Today's Reminder"),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: todaysClasses.isEmpty
-                    ? const Text('No classes scheduled for today.')
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: todaysClasses
-                            .map((t) => Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 4),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.class_outlined,
-                                          size: 18, color: AppColors.primary),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                            '${t.hour} — ${t.subject} (${t.room})'),
-                                      ),
-                                    ],
-                                  ),
-                                ))
-                            .toList(),
-                      ),
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                    child: Text(
+                      user.name.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            const SectionHeader(title: '🚨 CRITICAL: Active SOS Incidents'),
-            if (data.incidents.isEmpty)
-              const Card(
-                  child: Padding(
-                      padding: EdgeInsets.all(14),
-                      child: Text('No active incidents at the moment.')))
-            else ...[
-              ...data.incidents.map(
-                  (incident) => IncidentCard(incident: incident, data: data)),
-            ],
-            const SizedBox(height: 24),
-            const SectionHeader(title: 'Actions'),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.5,
-              children: [
-                ModuleCard(
-                  title: 'Student Management',
-                  icon: Icons.groups_outlined,
-                  color: AppColors.accent,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const StudentManagementScreen()),
-                  ),
+              const SizedBox(height: 12),
+              const SectionHeader(title: "Today's Reminder"),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: todaysClasses.isEmpty
+                      ? const Text('No classes scheduled for today.')
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: todaysClasses
+                              .map((t) => Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 4),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.class_outlined,
+                                            size: 18, color: AppColors.primary),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                              '${t.hour} — ${t.subject} (${t.room})'),
+                                        ),
+                                      ],
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
                 ),
-                ModuleCard(
-                  title: 'Study Materials',
-                  icon: Icons.folder_shared_outlined,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const StudyMaterialsScreen()),
-                  ),
-                ),
-                ModuleCard(
-                  title: 'Mark / Edit Attendance',
-                  icon: Icons.fact_check_outlined,
-                  onTap: () => _markAttendance(context, data),
-                ),
-                ModuleCard(
-                  title: 'Post Assignment',
-                  icon: Icons.assignment_add,
-                  color: AppColors.accent,
-                  onTap: () => _postAssignment(context, data, user.name),
-                ),
-                ModuleCard(
-                  title: 'Post Material / Syllabus',
-                  icon: Icons.upload_file_outlined,
-                  onTap: () => _postMaterial(context, data),
-                ),
-                ModuleCard(
-                  title: 'Mark / Remark Fees',
-                  icon: Icons.currency_rupee,
-                  color: AppColors.warning,
-                  onTap: () => _markFees(context, data),
-                ),
-                ModuleCard(
-                  title: 'Modify Time Slot',
-                  icon: Icons.edit_calendar_outlined,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const TimetableScreen()),
-                  ),
-                ),
-                ModuleCard(
-                  title: 'Post Dept. Notice',
-                  icon: Icons.campaign_outlined,
-                  color: AppColors.primaryDark,
-                  onTap: () => _postNotice(context, data, user),
-                ),
+              ),
+              const SizedBox(height: 16),
+              const SectionHeader(title: '🚨 CRITICAL: Active SOS Incidents'),
+              if (data.incidents.isEmpty)
+                const Card(
+                    child: Padding(
+                        padding: EdgeInsets.all(14),
+                        child: Text('No active incidents at the moment.')))
+              else ...[
+                ...data.incidents.map(
+                    (incident) => IncidentCard(incident: incident, data: data)),
               ],
-            ),
-          ],
+              const SizedBox(height: 24),
+              const SectionHeader(title: 'Actions'),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.5,
+                children: [
+                  ModuleCard(
+                    title: 'Student Management',
+                    icon: Icons.groups_outlined,
+                    color: AppColors.accent,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const StudentManagementScreen()),
+                    ),
+                  ),
+                  ModuleCard(
+                    title: 'Study Materials',
+                    icon: Icons.folder_shared_outlined,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const StudyMaterialsScreen()),
+                    ),
+                  ),
+                  ModuleCard(
+                    title: 'Mark / Edit Attendance',
+                    icon: Icons.fact_check_outlined,
+                    onTap: () => _markAttendance(context, data),
+                  ),
+                  ModuleCard(
+                    title: 'Post Assignment',
+                    icon: Icons.assignment_add,
+                    color: AppColors.accent,
+                    onTap: () => _postAssignment(context, data, user.name),
+                  ),
+                  ModuleCard(
+                    title: 'Post Material / Syllabus',
+                    icon: Icons.upload_file_outlined,
+                    onTap: () => _postMaterial(context, data),
+                  ),
+                  ModuleCard(
+                    title: 'Mark / Remark Fees',
+                    icon: Icons.currency_rupee,
+                    color: AppColors.warning,
+                    onTap: () => _markFees(context, data),
+                  ),
+                  ModuleCard(
+                    title: 'Modify Time Slot',
+                    icon: Icons.edit_calendar_outlined,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const TimetableScreen()),
+                    ),
+                  ),
+                  ModuleCard(
+                    title: 'Post Dept. Notice',
+                    icon: Icons.campaign_outlined,
+                    color: AppColors.primaryDark,
+                    onTap: () => _postNotice(context, data, user),
+                  ),
+                  ModuleCard(
+                    title: 'Anti-Ragging',
+                    icon: Icons.shield_outlined,
+                    color: AppColors.danger,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const AntiRaggingDashboard()),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

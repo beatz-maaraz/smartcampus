@@ -474,3 +474,55 @@ class Incident {
         etaMinutes: j['etaMinutes'] as int?,
       );
 }
+
+class Complaint {
+  final String id;
+  final String studentId;
+  final String title;
+  final String description;
+  final DateTime incidentDate;
+  final bool isAnonymous;
+  final String status;
+  final String? facultyComments;
+  final String? updatedBy;
+  final DateTime createdAt;
+
+  Complaint({
+    required this.id,
+    required this.studentId,
+    required this.title,
+    required this.description,
+    required this.incidentDate,
+    required this.isAnonymous,
+    required this.status,
+    this.facultyComments,
+    this.updatedBy,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'studentId': studentId,
+        'title': title,
+        'description': description,
+        'incidentDate': incidentDate.toIso8601String(),
+        'isAnonymous': isAnonymous,
+        'status': status,
+        'facultyComments': facultyComments,
+        'updatedBy': updatedBy,
+        'createdAt': createdAt.toIso8601String(),
+      };
+
+  factory Complaint.fromJson(Map<String, dynamic> j) => Complaint(
+        id: j['id'] as String,
+        studentId: j['studentId'] as String,
+        title: j['title'] as String,
+        description: j['description'] as String,
+        incidentDate: DateTime.parse(j['incidentDate'] as String),
+        isAnonymous: j['isAnonymous'] as bool,
+        status: j['status'] as String,
+        facultyComments: j['facultyComments'] as String?,
+        updatedBy: j['updatedBy'] as String?,
+        createdAt: DateTime.parse(j['createdAt'] as String),
+      );
+}

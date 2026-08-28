@@ -155,6 +155,7 @@ class CampusDataService extends ChangeNotifier {
         'students': _students.map((s) => s.toJson()).toList(),
         'notifications': _notifications.map((n) => n.toJson()).toList(),
         'incidents': _incidents.map((i) => i.toJson()).toList(),
+        'complaints': _complaints.map((c) => c.toJson()).toList(),
       };
 
   void _loadFromJson(Map<String, dynamic> j) {
@@ -206,6 +207,31 @@ class CampusDataService extends ChangeNotifier {
       ..clear()
       ..addAll((j['notifications'] as List? ?? [])
           .map((e) => NotificationLog.fromJson(e as Map<String, dynamic>)));
+    _complaints
+      ..clear()
+      ..addAll((j['complaints'] as List? ?? [])
+          .map((e) => Complaint.fromJson(e as Map<String, dynamic>)));
+  }
+
+  // ---------------------------------------------------------------------
+  // ANTI-RAGGING COMPLAINTS
+  // ---------------------------------------------------------------------
+  final List<Complaint> _complaints = [];
+  List<Complaint> get complaints => List.unmodifiable(_complaints);
+
+  void addComplaint(Complaint complaint) {
+    _complaints.insert(0, complaint); // Newest first
+    notifyListeners();
+    _persist();
+  }
+
+  void updateComplaint(Complaint updated) {
+    final idx = _complaints.indexWhere((c) => c.id == updated.id);
+    if (idx != -1) {
+      _complaints[idx] = updated;
+      notifyListeners();
+      _persist();
+    }
   }
 
   // ---------------------------------------------------------------------

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 import '../services/campus_data_service.dart';
+import '../services/auth_service.dart';
 import '../config/constants.dart';
 
 class IncidentCard extends StatefulWidget {
@@ -306,6 +308,9 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                           height: 48,
                           child: ElevatedButton.icon(
                             onPressed: () {
+                              final auth = Provider.of<AuthService>(context, listen: false);
+                              final user = auth.currentUser!;
+                              
                               final ack = Incident(
                                 id: widget.incident.id,
                                 userId: widget.incident.userId,
@@ -314,8 +319,8 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                                 photoUrls: widget.incident.photoUrls,
                                 status: widget.incident.status,
                                 matchedVenueId: widget.incident.matchedVenueId,
-                                routedToFacultyId: widget.incident.routedToFacultyId,
-                                routedToLabel: widget.incident.routedToLabel,
+                                routedToFacultyId: user.id,
+                                routedToLabel: '${user.role.label} ${user.name}',
                                 acknowledgedAt: DateTime.now(),
                                 etaMinutes: 3,
                               );
@@ -337,6 +342,9 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                         height: 48,
                         child: ElevatedButton.icon(
                           onPressed: () {
+                            final auth = Provider.of<AuthService>(context, listen: false);
+                            final user = auth.currentUser!;
+                            
                             final resolved = Incident(
                               id: widget.incident.id,
                               userId: widget.incident.userId,
@@ -345,9 +353,9 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                               photoUrls: widget.incident.photoUrls,
                               status: IncidentStatus.resolved,
                               matchedVenueId: widget.incident.matchedVenueId,
-                              routedToFacultyId: widget.incident.routedToFacultyId,
-                              routedToLabel: widget.incident.routedToLabel,
-                              acknowledgedAt: widget.incident.acknowledgedAt,
+                              routedToFacultyId: user.id,
+                              routedToLabel: 'Resolved by ${user.role.label} ${user.name}',
+                              acknowledgedAt: widget.incident.acknowledgedAt ?? DateTime.now(),
                               etaMinutes: widget.incident.etaMinutes,
                             );
                             widget.data.addOrUpdateIncident(resolved);

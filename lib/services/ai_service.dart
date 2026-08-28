@@ -44,6 +44,22 @@ keys: "name", "formula", "hazard" (one of "safe", "careful", "hazardous"),
 "usage", "firstAid".
 ''';
 
+  static const String _counselingSystemPrompt = '''
+You are 'CampusCare AI', an empathetic, non-judgmental, and highly confidential substance abuse and mental health awareness counselor for college students. 
+
+Your goals:
+1. Provide a safe space for students struggling with drug or alcohol addiction.
+2. Educate students on the physiological and psychological impacts of substance abuse using scientifically accurate data.
+3. Encourage harm reduction, seeking professional help, and healthy coping mechanisms.
+
+Strict Rules:
+- NEVER judge, shame, or lecture the student. Use a supportive, warm, and conversational tone.
+- NEVER prescribe medication, give medical diagnoses, or encourage illegal activities.
+- NEVER ask for the student's real name, roll number, or personal identifiers.
+- Keep your responses concise (1-2 paragraphs max) so it feels like a real chat.
+- If a user asks a question unrelated to mental health, counseling, or substance abuse, politely guide them back to your purpose.
+''';
+
   // ---------------------------------------------------------------------
   // 1. Chatbot (OpenRouter)
   // ---------------------------------------------------------------------
@@ -69,6 +85,40 @@ keys: "name", "formula", "hazard" (one of "safe", "careful", "hazardous"),
     } catch (e) {
       return 'Sorry, I couldn\'t reach the AI service right now (${e.toString()}). '
           'Please try again in a moment.';
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // 1b. Counseling Chatbot (OpenRouter)
+  // ---------------------------------------------------------------------
+
+  Future<String> askCounselor(String userMessage,
+      {List<ChatMessage> history = const []}) async {
+      
+    // 1. Emergency Redirection Check
+    final lowerMessage = userMessage.toLowerCase();
+    const emergencyKeywords = ["suicide", "kill myself", "die", "overdose", "end it all"];
+    final isEmergency = emergencyKeywords.any((k) => lowerMessage.contains(k));
+    
+    if (isEmergency) {
+      return "🚨 EMERGENCY: It sounds like you are going through a very difficult time. Please reach out for immediate help. Call the Campus Emergency Helpline at +1-800-CAMPUS or the Crisis Lifeline at 988 right away. Your life matters.";
+    }
+
+    if (!ApiConfig.hasOpenRouterKey) {
+      return _mockCounselorReply(userMessage);
+    }
+
+    final messages = <Map<String, String>>[
+      {'role': 'system', 'content': _counselingSystemPrompt},
+      for (final m in history)
+        {'role': m.fromUser ? 'user' : 'assistant', 'content': m.text},
+      {'role': 'user', 'content': userMessage},
+    ];
+
+    try {
+      return await _openRouter.sendMessage(messages: messages);
+    } catch (e) {
+      return 'Sorry, I am currently unavailable. Please try again later.';
     }
   }
 
@@ -286,6 +336,24 @@ keys: "name", "formula", "hazard" (one of "safe", "careful", "hazardous"),
     }
     return 'I can help with campus locations, events, attendance, fees, '
         'and your timetable. Could you rephrase your question with one of those topics?\n\n'
+        '(Note: no OPENROUTER_API_KEY was supplied at build time, so I\'m running in offline demo mode.)';
+  }
+
+  Future<String> _mockCounselorReply(String message) async {
+    await Future.delayed(const Duration(milliseconds: 600));
+    final m = message.toLowerCase();
+
+    if (m.contains('alcohol') || m.contains('drink')) {
+      return 'Alcohol can have significant impacts on your academic performance and mental health. It\'s important to understand your limits. Have you been feeling pressured to drink?';
+    }
+    if (m.contains('drug') || m.contains('weed') || m.contains('smoke')) {
+      return 'Substance use often starts as a coping mechanism, but it can quickly escalate. I am here to listen without judgment. Do you want to talk about what\'s been going on?';
+    }
+    if (m.contains('help') || m.contains('stress')) {
+      return 'College can be incredibly stressful, and it takes courage to ask for help. We have campus counselors available for completely free, confidential sessions. Would you like me to share their contact info?';
+    }
+    
+    return 'I am CampusCare AI, a confidential space to talk about mental health, stress, or substance use. How are you feeling today?\n\n'
         '(Note: no OPENROUTER_API_KEY was supplied at build time, so I\'m running in offline demo mode.)';
   }
 

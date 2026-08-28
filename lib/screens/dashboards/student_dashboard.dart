@@ -7,11 +7,15 @@ import '../../widgets/widgets.dart';
 import '../modules/timetable_screen.dart';
 import '../modules/navigation_screen.dart';
 import '../modules/chatbot_screen.dart';
+import '../modules/counseling_chatbot_screen.dart';
 import '../modules/chemical_hub_screen.dart';
+import '../modules/anti_ragging/anti_ragging_form_screen.dart';
 import '../modules/notice_screen.dart';
 import '../modules/study_materials_screen.dart';
 import '../modules/assignments_screen.dart';
 import '../sos/pre_sos_screen.dart';
+
+import '../modules/anti_ragging/my_complaints_screen.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -98,8 +102,9 @@ class StudentHomeTab extends StatelessWidget {
           child: const Icon(Icons.sos_rounded, color: Colors.white, size: 36),
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {},
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {},
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: kPad, vertical: 8),
           children: [
@@ -183,7 +188,7 @@ class StudentHomeTab extends StatelessWidget {
                 ),
               ],
             ),
-            const SectionHeader(title: 'Modules'),
+            const SectionHeader(title: 'Academics'),
             GridView.count(
               crossAxisCount: 3,
               shrinkWrap: true,
@@ -197,14 +202,6 @@ class StudentHomeTab extends StatelessWidget {
                   icon: Icons.calendar_month_outlined,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const TimetableScreen()),
-                  ),
-                ),
-                ModuleCard(
-                  title: 'Smart Navigation',
-                  icon: Icons.map_outlined,
-                  color: AppColors.accent,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const NavigationScreen()),
                   ),
                 ),
                 ModuleCard(
@@ -224,18 +221,30 @@ class StudentHomeTab extends StatelessWidget {
                         builder: (_) => const AssignmentsScreen()),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const SectionHeader(title: 'Campus & Facilities'),
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.95,
+              children: [
+                ModuleCard(
+                  title: 'Smart Navigation',
+                  icon: Icons.map_outlined,
+                  color: AppColors.accent,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const NavigationScreen()),
+                  ),
+                ),
                 ModuleCard(
                   title: 'Event Browser',
                   icon: Icons.event_outlined,
                   onTap: () => _showEvents(context, data),
-                ),
-                ModuleCard(
-                  title: 'AI Chatbot',
-                  icon: Icons.smart_toy_outlined,
-                  color: AppColors.primaryDark,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ChatbotScreen()),
-                  ),
                 ),
                 ModuleCard(
                   title: 'Chemical Hub',
@@ -248,8 +257,47 @@ class StudentHomeTab extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            const SectionHeader(title: 'Support & Safety'),
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.95,
+              children: [
+                ModuleCard(
+                  title: 'AI Chatbot',
+                  icon: Icons.smart_toy_outlined,
+                  color: AppColors.primaryDark,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ChatbotScreen()),
+                  ),
+                ),
+                ModuleCard(
+                  title: 'Anti-Ragging',
+                  icon: Icons.shield_outlined,
+                  color: AppColors.danger,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const AntiRaggingFormScreen()),
+                  ),
+                ),
+                ModuleCard(
+                  title: 'Counseling',
+                  icon: Icons.favorite_border,
+                  color: AppColors.accent,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const CounselingChatbotScreen()),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -323,6 +371,14 @@ class ProfileTab extends StatelessWidget {
             style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 40),
+          ListTile(
+            leading: const Icon(Icons.shield_outlined, color: AppColors.primary),
+            title: const Text('My Anti-Ragging Complaints'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MyComplaintsScreen()),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.notifications_outlined),
             title: const Text('Notices'),
