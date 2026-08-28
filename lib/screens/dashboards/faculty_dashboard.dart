@@ -11,6 +11,7 @@ import '../modules/study_materials_screen.dart';
 import '../modules/chatbot_screen.dart';
 import '../modules/anti_ragging/anti_ragging_dashboard.dart';
 import '../modules/notice_screen.dart';
+import '../modules/settings_screen.dart';
 
 class FacultyDashboard extends StatefulWidget {
   const FacultyDashboard({super.key});
@@ -55,7 +56,6 @@ class FacultyHomeTab extends StatelessWidget {
     final data = context.watch<CampusDataService>();
     final user = auth.currentUser!;
     final todaysClasses = data.todaysTimetable();
-    final activeIncidents = data.incidents.where((i) => i.status != IncidentStatus.resolved).toList();
 
     return Scaffold(
       body: SafeArea(
@@ -75,8 +75,7 @@ class FacultyHomeTab extends StatelessWidget {
                       Text('Hello, ${user.name}',
                           style: const TextStyle(
                               fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary)),
+                              fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       const Text('Faculty Dashboard',
                           style: TextStyle(
@@ -125,17 +124,6 @@ class FacultyHomeTab extends StatelessWidget {
                         ),
                 ),
               ),
-              const SizedBox(height: 16),
-              const SectionHeader(title: '🚨 CRITICAL: Active SOS Incidents'),
-              if (activeIncidents.isEmpty)
-                const Card(
-                    child: Padding(
-                        padding: EdgeInsets.all(14),
-                        child: Text('No active incidents at the moment.')))
-              else ...[
-                ...activeIncidents.map(
-                    (incident) => IncidentCard(incident: incident, data: data)),
-              ],
               const SizedBox(height: 24),
               const SectionHeader(title: 'Actions'),
               GridView.count(
@@ -508,7 +496,9 @@ class FacultyProfileTab extends StatelessWidget {
             leading: const Icon(Icons.settings_outlined),
             title: const Text('Settings'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.logout, color: AppColors.danger),

@@ -44,6 +44,16 @@ class CampusDataService extends ChangeNotifier {
   bool get isSignedInToDrive => _drive.isSignedIn;
   String? get driveAccountEmail => _drive.signedInEmail;
 
+  bool _isDarkMode = false;
+  bool get isDarkMode => _isDarkMode;
+
+  Future<void> toggleDarkMode(bool val) async {
+    _isDarkMode = val;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('setting_dark_mode', val);
+    notifyListeners();
+  }
+
   /// Call once at app startup (see main.dart).
   ///
   /// Order matters: local load happens FIRST and unconditionally, so the
@@ -56,6 +66,8 @@ class CampusDataService extends ChangeNotifier {
   Future<void> init() async {
     // ignore: avoid_print
     print('[Persistence] App starting — loading local data...');
+    final prefs = await SharedPreferences.getInstance();
+    _isDarkMode = prefs.getBool('setting_dark_mode') ?? false;
     await _loadLocal();
 
     try {

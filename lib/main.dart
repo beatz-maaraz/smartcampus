@@ -63,11 +63,15 @@ class _AiCampusAssistantAppState extends State<AiCampusAssistantApp> {
         ChangeNotifierProvider<AuthService>.value(value: widget.authService),
         ChangeNotifierProvider<CampusDataService>.value(value: widget.campusDataService),
       ],
-      child: MaterialApp.router(
-        title: AppStrings.appName,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        routerConfig: _router,
+      child: Consumer<CampusDataService>(
+        builder: (context, campusData, _) {
+          return MaterialApp.router(
+            title: AppStrings.appName,
+            debugShowCheckedModeBanner: false,
+            theme: campusData.isDarkMode ? AppTheme.dark() : AppTheme.light(),
+            routerConfig: _router,
+          );
+        },
       ),
     );
   }

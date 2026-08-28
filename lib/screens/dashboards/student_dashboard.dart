@@ -17,6 +17,7 @@ import '../modules/assignments_screen.dart';
 import '../sos/pre_sos_screen.dart';
 
 import '../modules/anti_ragging/my_complaints_screen.dart';
+import '../modules/settings_screen.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
@@ -118,8 +119,7 @@ class StudentHomeTab extends StatelessWidget {
                     Text('Hello, ${user.name}',
                         style: const TextStyle(
                             fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary)),
+                            fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     const Text('Student Dashboard',
                         style: TextStyle(
@@ -340,9 +340,12 @@ class ProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthService>();
+    final data = context.watch<CampusDataService>();
     final user = auth.currentUser;
     if (user == null) return const SizedBox.shrink();
     
+    final myComplaints = data.complaints.where((c) => c.studentId == user.id).toList();
+
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(kPad),
@@ -433,8 +436,69 @@ class ProfileTab extends StatelessWidget {
             leading: const Icon(Icons.settings_outlined),
             title: const Text('Settings'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
+          const SizedBox(height: 24),
+          const SectionHeader(title: 'Recent Complaints Status'),
+          const SizedBox(height: 8),
+          if (myComplaints.isEmpty)
+            const Card(
+              elevation: 0,
+              child: Padding(
+                padding: EdgeInsets.all(14),
+                child: Center(
+                  child: Text(
+                    'No registered complaints.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
+              ),
+            )
+          else
+            ...myComplaints.take(3).map((c) {
+              Color statusColor = AppColors.warning;
+              if (c.status == 'Under Investigation') statusColor = AppColors.primary;
+              if (c.status == 'Resolved') statusColor = AppColors.safe;
+              if (c.status == 'Dismissed') statusColor = AppColors.textSecondary;
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                child: ListTile(
+                  title: Text(c.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                    'Ref: ${c.id}\nStatus: ${c.status}',
+                    style: const TextStyle(fontSize: 13, height: 1.3),
+                  ),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: statusColor),
+                    ),
+                    child: Text(
+                      c.status,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const MyComplaintsScreen()),
+                  ),
+                ),
+              );
+            }),
+          const SizedBox(height: 16),
           ListTile(
             leading: const Icon(Icons.logout, color: AppColors.danger),
             title: const Text('Logout', style: TextStyle(color: AppColors.danger)),

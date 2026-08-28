@@ -129,7 +129,6 @@ class ModuleCard extends StatelessWidget {
                 style: const TextStyle(
                     fontWeight: FontWeight.w600, 
                     fontSize: 13, 
-                    color: AppColors.textPrimary, 
                     height: 1.2),
               ),
             ],

@@ -77,4 +77,79 @@ class AppTheme {
       ),
     );
   }
+
+  static ThemeData dark() {
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: const Color(0xFF0F172A), // Dark slate
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: AppColors.primary,
+        brightness: Brightness.dark,
+      ),
+    );
+    
+    final textTheme = GoogleFonts.outfitTextTheme(base.textTheme).apply(
+      bodyColor: Colors.white,
+      displayColor: Colors.white,
+    );
+
+    return base.copyWith(
+      textTheme: textTheme,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+        scrolledUnderElevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF1E293B), // Card dark slate
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(kRadius),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.05), width: 1),
+        ),
+        margin: const EdgeInsets.symmetric(vertical: 8),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(kRadius),
+          ),
+          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 16),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF1E293B),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(kRadius),
+          borderSide: BorderSide(color: Colors.grey.shade800),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(kRadius),
+          borderSide: BorderSide(color: Colors.grey.shade800),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(kRadius),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2.0),
+        ),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Color(0xFF0F172A),
+        selectedItemColor: AppColors.accent,
+        unselectedItemColor: Colors.grey,
+        elevation: 16,
+        type: BottomNavigationBarType.fixed,
+        showUnselectedLabels: true,
+      ),
+    );
+  }
 }

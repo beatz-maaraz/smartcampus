@@ -7,6 +7,7 @@ import '../../models/models.dart';
 import '../../widgets/widgets.dart';
 import '../modules/chatbot_screen.dart';
 import '../modules/notice_screen.dart';
+import '../modules/settings_screen.dart';
 import '../modules/anti_ragging/anti_ragging_dashboard.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -95,8 +96,7 @@ class AdminHomeTab extends StatelessWidget {
                     Text('Hello, ${user.name}',
                         style: const TextStyle(
                             fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary)),
+                            fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     const Text('Admin Dashboard',
                         style: TextStyle(
@@ -539,6 +539,8 @@ class AdminHomeTab extends StatelessWidget {
   }
 }
 
+
+
 class AdminProfileTab extends StatelessWidget {
   const AdminProfileTab({super.key});
 
@@ -589,7 +591,9 @@ class AdminProfileTab extends StatelessWidget {
             leading: const Icon(Icons.settings_outlined),
             title: const Text('Settings'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.logout, color: AppColors.danger),

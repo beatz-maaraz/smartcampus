@@ -186,4 +186,13 @@ class AuthService extends ChangeNotifier {
     await prefs.remove(_prefsKeyName);
     notifyListeners();
   }
+
+  Future<String?> resetPassword(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
 }

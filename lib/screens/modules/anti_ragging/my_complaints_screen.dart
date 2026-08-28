@@ -159,8 +159,7 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                                 const Divider(height: 24),
                                 Text(c.updatedBy != null ? 'Remarks by ${c.updatedBy}:' : 'Admin/Faculty Remarks:',
                                     style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.textPrimary)),
+                                        fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
                                 Text(
                                   c.facultyComments!,

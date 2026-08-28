@@ -25,7 +25,6 @@ class NoticeScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
-        foregroundColor: AppColors.textPrimary,
       ),
       body: notices.isEmpty
           ? const EmptyState(
@@ -120,7 +119,6 @@ class NoticeScreen extends StatelessWidget {
                                     style: const TextStyle(
                                       fontSize: 17,
                                       fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
                                       height: 1.3,
                                     ),
                                   ),

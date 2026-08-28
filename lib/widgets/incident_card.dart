@@ -177,7 +177,7 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                                 const SizedBox(height: 2),
                                 Text(
                                   '${widget.incident.location.lat.toStringAsFixed(5)}, ${widget.incident.location.lng.toStringAsFixed(5)}',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -228,7 +228,7 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                                   const SizedBox(height: 2),
                                   Text(
                                     widget.incident.routedToLabel!,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -252,7 +252,7 @@ class _IncidentCardState extends State<IncidentCard> with SingleTickerProviderSt
                     ],
 
                     // Photos Section
-                    const Text('Live Auto-Captured Photos', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                    const Text('Live Auto-Captured Photos', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     if (widget.incident.photoUrls.isNotEmpty)
                       SizedBox(
