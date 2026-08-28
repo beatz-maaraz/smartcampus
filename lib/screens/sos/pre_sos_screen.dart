@@ -37,7 +37,7 @@ class PreSOSScreen extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 40.0),
               child: Text(
-                'Hold the button below for 2.5 seconds to trigger an emergency alert.\n\n'
+                'Hold the button below for 2 seconds to trigger an emergency alert.\n\n'
                 'This will instantly notify campus security and share your live location.',
                 textAlign: TextAlign.center,
                 style:

@@ -8,10 +8,45 @@ import '../../widgets/widgets.dart';
 import '../modules/timetable_screen.dart';
 import '../modules/student_management_screen.dart';
 import '../modules/study_materials_screen.dart';
+import '../modules/chatbot_screen.dart';
+import '../modules/notice_screen.dart';
 
-
-class FacultyDashboard extends StatelessWidget {
+class FacultyDashboard extends StatefulWidget {
   const FacultyDashboard({super.key});
+
+  @override
+  State<FacultyDashboard> createState() => _FacultyDashboardState();
+}
+
+class _FacultyDashboardState extends State<FacultyDashboard> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          const FacultyHomeTab(),
+          const ChatbotScreen(),
+          const FacultyProfileTab(),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
+        items: [
+          BottomNavigationBarItem(icon: const Icon(Icons.home_outlined), activeIcon: const Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: const Icon(Icons.smart_toy_outlined), activeIcon: const Icon(Icons.smart_toy), label: 'Assistant'),
+          BottomNavigationBarItem(icon: const Icon(Icons.person_outline), activeIcon: const Icon(Icons.person), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+}
+
+class FacultyHomeTab extends StatelessWidget {
+  const FacultyHomeTab({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,23 +56,44 @@ class FacultyDashboard extends StatelessWidget {
     final todaysClasses = data.todaysTimetable();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Faculty Dashboard'),
-        actions: [
-          IconButton(
-              icon: const Icon(Icons.logout), onPressed: () => auth.logout()),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: () async {
           await data.refresh();
         },
         child: ListView(
-          padding: const EdgeInsets.all(kPad),
+          padding: const EdgeInsets.symmetric(horizontal: kPad, vertical: 8),
           children: [
-            Text('Welcome, ${user.name} 👋',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Hello, ${user.name}',
+                        style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 4),
+                    const Text('Faculty Dashboard',
+                        style: TextStyle(
+                            fontSize: 15, color: AppColors.textSecondary)),
+                  ],
+                ),
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                  child: Text(
+                    user.name.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             const SectionHeader(title: "Today's Reminder"),
             Card(
               child: Padding(
@@ -385,5 +441,68 @@ class FacultyDashboard extends StatelessWidget {
   void _toast(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class FacultyProfileTab extends StatelessWidget {
+  const FacultyProfileTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+    final user = auth.currentUser!;
+    
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(kPad),
+        children: [
+          const SizedBox(height: 20),
+          Center(
+            child: CircleAvatar(
+              radius: 50,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+              child: Text(
+                user.name.substring(0, 1).toUpperCase(),
+                style: const TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            user.name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            user.role.label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 40),
+          ListTile(
+            leading: const Icon(Icons.notifications_outlined),
+            title: const Text('Notices'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NoticeScreen()),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text('Settings'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {},
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout, color: AppColors.danger),
+            title: const Text('Logout', style: TextStyle(color: AppColors.danger)),
+            onTap: () => auth.logout(),
+          ),
+        ],
+      ),
+    );
   }
 }

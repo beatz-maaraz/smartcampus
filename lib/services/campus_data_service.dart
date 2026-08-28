@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'package:crypto/crypto.dart';
+import '../config/constants.dart';
 import '../models/models.dart';
 import 'google_drive_service.dart';
 
@@ -228,8 +231,46 @@ class CampusDataService extends ChangeNotifier {
   }
 
   Future<String?> uploadSOSPhoto(File localFile, String fileName, {String? folderId}) async {
-    if (!_driveReady) return null;
-    return await _drive.uploadPublicPhoto(localFile, fileName, folderId: folderId);
+    try {
+      final timestamp = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+      
+      final Map<String, String> paramsToSign = {
+        'timestamp': timestamp,
+      };
+      
+      if (folderId != null) {
+        paramsToSign['folder'] = folderId;
+      }
+      
+      final sortedKeys = paramsToSign.keys.toList()..sort();
+      final paramsString = sortedKeys.map((key) => '$key=${paramsToSign[key]}').join('&');
+      final strToSign = '$paramsString${CloudinaryConfig.apiSecret}';
+      final signature = sha1.convert(utf8.encode(strToSign)).toString();
+
+      final uri = Uri.parse('https://api.cloudinary.com/v1_1/${CloudinaryConfig.cloudName}/image/upload');
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['api_key'] = CloudinaryConfig.apiKey
+        ..fields['timestamp'] = timestamp
+        ..fields['signature'] = signature
+        ..files.add(await http.MultipartFile.fromPath('file', localFile.path));
+        
+      if (folderId != null) {
+        request.fields['folder'] = folderId; // Optionally organize in Cloudinary
+      }
+
+      final response = await request.send();
+      if (response.statusCode == 200) {
+        final responseData = await response.stream.bytesToString();
+        final json = jsonDecode(responseData);
+        return json['secure_url']; // Return the direct image URL
+      } else {
+        debugPrint('Cloudinary upload failed with status: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Cloudinary upload error: $e');
+      return null;
+    }
   }
 
   // ---------------------------------------------------------------------

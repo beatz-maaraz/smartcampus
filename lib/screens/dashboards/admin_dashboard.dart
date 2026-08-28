@@ -5,9 +5,67 @@ import '../../services/auth_service.dart';
 import '../../services/campus_data_service.dart';
 import '../../models/models.dart';
 import '../../widgets/widgets.dart';
-
-class AdminDashboard extends StatelessWidget {
+import '../modules/chatbot_screen.dart';
+import '../modules/notice_screen.dart';
+class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
+
+  @override
+  State<AdminDashboard> createState() => _AdminDashboardState();
+}
+
+class _AdminDashboardState extends State<AdminDashboard> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> tabTitles = ['Admin Dashboard', 'AI Assistant', 'Admin Profile'];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(tabTitles[_currentIndex], style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
+        centerTitle: true,
+        elevation: 8,
+        shadowColor: AppColors.primary.withValues(alpha: 0.4),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+        ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.primary, AppColors.accent],
+            ),
+          ),
+        ),
+      ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          const AdminHomeTab(),
+          const ChatbotScreen(),
+          const AdminProfileTab(),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
+        items: [
+          BottomNavigationBarItem(icon: const Icon(Icons.home_outlined), activeIcon: const Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: const Icon(Icons.smart_toy_outlined), activeIcon: const Icon(Icons.smart_toy), label: 'Assistant'),
+          BottomNavigationBarItem(icon: const Icon(Icons.person_outline), activeIcon: const Icon(Icons.person), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+}
+
+class AdminHomeTab extends StatelessWidget {
+  const AdminHomeTab({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,23 +75,43 @@ class AdminDashboard extends StatelessWidget {
     final report = data.globalAttendanceReport();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-        actions: [
-          IconButton(
-              icon: const Icon(Icons.logout), onPressed: () => auth.logout()),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: () async {
           await data.refresh();
         },
         child: ListView(
-          padding: const EdgeInsets.all(kPad),
+          padding: const EdgeInsets.symmetric(horizontal: kPad, vertical: 8),
           children: [
-            Text('Welcome, ${user.name} 👋',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Hello, ${user.name}',
+                        style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 4),
+                    const Text('Admin Dashboard',
+                        style: TextStyle(
+                            fontSize: 15, color: AppColors.textSecondary)),
+                  ],
+                ),
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                  child: Text(
+                    user.name.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
             const SectionHeader(title: '🚨 CRITICAL: Active SOS Incidents'),
             if (data.incidents.isEmpty)
@@ -53,7 +131,7 @@ class AdminDashboard extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 1.4,
+              childAspectRatio: 1.0,
               children: [
                 ModuleCard(
                   title: 'Drop Location Pin',
@@ -376,5 +454,68 @@ class AdminDashboard extends StatelessWidget {
   void _toast(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class AdminProfileTab extends StatelessWidget {
+  const AdminProfileTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+    final user = auth.currentUser!;
+    
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(kPad),
+        children: [
+          const SizedBox(height: 20),
+          Center(
+            child: CircleAvatar(
+              radius: 50,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+              child: Text(
+                user.name.substring(0, 1).toUpperCase(),
+                style: const TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            user.name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            user.role.label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 40),
+          ListTile(
+            leading: const Icon(Icons.notifications_outlined),
+            title: const Text('Notices'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NoticeScreen()),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text('Settings'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {},
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout, color: AppColors.danger),
+            title: const Text('Logout', style: TextStyle(color: AppColors.danger)),
+            onTap: () => auth.logout(),
+          ),
+        ],
+      ),
+    );
   }
 }

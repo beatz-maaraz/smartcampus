@@ -20,16 +20,16 @@ extension UserRoleX on UserRole {
 }
 
 class AppColors {
-  static const primary = Color(0xFF2E5CFF);
-  static const primaryDark = Color(0xFF1A3FCC);
-  static const accent = Color(0xFF00C2A8);
-  static const bgLight = Color(0xFFF5F7FB);
+  static const primary = Color(0xFF6D28D9); // Violet 700
+  static const primaryDark = Color(0xFF4C1D95); // Violet 900
+  static const accent = Color(0xFF06B6D4); // Cyan 500
+  static const bgLight = Color(0xFFF8FAFC); // Slate 50
   static const cardLight = Colors.white;
-  static const danger = Color(0xFFE5484D);
-  static const warning = Color(0xFFF5A623);
-  static const safe = Color(0xFF34C759);
-  static const textPrimary = Color(0xFF1B1F3B);
-  static const textSecondary = Color(0xFF6B7280);
+  static const danger = Color(0xFFEF4444); // Red 500
+  static const warning = Color(0xFFF59E0B); // Amber 500
+  static const safe = Color(0xFF22C55E); // Green 500
+  static const textPrimary = Color(0xFF0F172A); // Slate 900
+  static const textSecondary = Color(0xFF64748B); // Slate 500
 }
 
 class AppStrings {
@@ -52,4 +52,10 @@ class DemoCredentials {
 }
 
 const double kPad = 16.0;
-const double kRadius = 16.0;
+const double kRadius = 24.0;
+
+class CloudinaryConfig {
+  static const cloudName = 'vzjyyvtp';
+  static const apiKey = '544988352783325';
+  static const apiSecret = 'i2aP4Pw52Y9Ahh5kAZVCsJRBcJU';
+}

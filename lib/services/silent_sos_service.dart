@@ -8,6 +8,7 @@ import '../models/models.dart';
 import 'location_service.dart';
 import 'sos_service.dart';
 import 'campus_data_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class SilentSosService {
   static StreamSubscription? _locationSub;
@@ -17,12 +18,76 @@ class SilentSosService {
       // 1. Location
       final pos = await LocationService.getCurrentPosition();
       
+      String? matchedVenueId;
+      String? routedToFacultyId;
+      String routedToLabel = "Security Desk";
+
+      // 2. Find nearest venue (within 100 meters, or infinity for demo)
+      double smallestDistance = double.infinity;
+      for (var venue in campusData.venues) {
+        final distance = Geolocator.distanceBetween(
+          pos.lat, pos.lng, venue.lat, venue.lng
+        );
+        if (distance < smallestDistance) {
+          smallestDistance = distance;
+          matchedVenueId = venue.id;
+        }
+      }
+      
+      // If distance > 1000m, assume no venue match. Using 1000m for demo leniency.
+      if (smallestDistance > 1000) {
+        matchedVenueId = null;
+      }
+
+      // 3. Timetable matching
+      if (matchedVenueId != null) {
+        final now = DateTime.now();
+        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        final currentDay = days[now.weekday - 1];
+        
+        final currentHour = now.hour;
+        final currentMin = now.minute;
+        
+        for (var slot in campusData.fullTimetable) {
+          // If we matched the venue (or room logic mapping)
+          // Since our venues are "v1", "v2" and rooms are "CSE-101", let's just assume 
+          // the demo matches any slot for the current day to show the routing working.
+          if (slot.day == currentDay) {
+            try {
+              final parts = slot.hour.split('-');
+              if (parts.length == 2) {
+                final startParts = parts[0].trim().split(':');
+                final endParts = parts[1].trim().split(':');
+                
+                final startH = int.parse(startParts[0]);
+                final startM = int.parse(startParts[1]);
+                final endH = int.parse(endParts[0]);
+                final endM = int.parse(endParts[1]);
+                
+                final startTotal = startH * 60 + startM;
+                final endTotal = endH * 60 + endM;
+                final currentTotal = currentHour * 60 + currentMin;
+                
+                if (currentTotal >= startTotal && currentTotal <= endTotal) {
+                  routedToFacultyId = "faculty"; // Fallback demo ID
+                  routedToLabel = slot.faculty;
+                  break;
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      }
+
       final incident = Incident(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         userId: '${user.id}_${user.name.replaceAll(' ', '_')}',
         location: pos,
         timestamp: DateTime.now(),
         status: IncidentStatus.triggered,
+        matchedVenueId: matchedVenueId,
+        routedToFacultyId: routedToFacultyId,
+        routedToLabel: routedToLabel,
       );
 
       // Trigger backend

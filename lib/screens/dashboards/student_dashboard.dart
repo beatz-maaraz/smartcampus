@@ -13,8 +13,42 @@ import '../modules/study_materials_screen.dart';
 import '../modules/assignments_screen.dart';
 import '../sos/pre_sos_screen.dart';
 
-class StudentDashboard extends StatelessWidget {
+class StudentDashboard extends StatefulWidget {
   const StudentDashboard({super.key});
+
+  @override
+  State<StudentDashboard> createState() => _StudentDashboardState();
+}
+
+class _StudentDashboardState extends State<StudentDashboard> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          const StudentHomeTab(),
+          const ChatbotScreen(),
+          const ProfileTab(),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
+        items: [
+          BottomNavigationBarItem(icon: const Icon(Icons.home_outlined), activeIcon: const Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: const Icon(Icons.smart_toy_outlined), activeIcon: const Icon(Icons.smart_toy), label: 'Assistant'),
+          BottomNavigationBarItem(icon: const Icon(Icons.person_outline), activeIcon: const Icon(Icons.person), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+}
+
+class StudentHomeTab extends StatelessWidget {
+  const StudentHomeTab({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -28,38 +62,78 @@ class StudentDashboard extends StatelessWidget {
     final todaysClasses = data.todaysTimetable();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Student Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const NoticeScreen()),
+      floatingActionButton: Container(
+        height: 64,
+        width: 64,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [Colors.red.shade400, Colors.red.shade900],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.withValues(alpha: 0.5),
+              blurRadius: 20,
+              spreadRadius: 2,
+              offset: const Offset(0, 6),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => auth.logout(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.red.shade700,
-        child: const Icon(Icons.sos, color: Colors.white, size: 32),
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const PreSOSScreen()),
-          );
-        },
+            BoxShadow(
+              color: Colors.red.shade900.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          highlightElevation: 0,
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PreSOSScreen()),
+            );
+          },
+          child: const Icon(Icons.sos_rounded, color: Colors.white, size: 36),
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: () async {},
         child: ListView(
-          padding: const EdgeInsets.all(kPad),
+          padding: const EdgeInsets.symmetric(horizontal: kPad, vertical: 8),
           children: [
-            Text('Welcome, ${user.name} 👋',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Hello, ${user.name}',
+                        style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary)),
+                    const SizedBox(height: 4),
+                    const Text('Student Dashboard',
+                        style: TextStyle(
+                            fontSize: 15, color: AppColors.textSecondary)),
+                  ],
+                ),
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                  child: Text(
+                    user.name.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             const SectionHeader(title: "Today's Summary"),
             GridView.count(
               crossAxisCount: 2,
@@ -206,6 +280,69 @@ class StudentDashboard extends StatelessWidget {
                   );
                 },
               ),
+      ),
+    );
+  }
+}
+
+class ProfileTab extends StatelessWidget {
+  const ProfileTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+    final user = auth.currentUser!;
+    
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(kPad),
+        children: [
+          const SizedBox(height: 20),
+          Center(
+            child: CircleAvatar(
+              radius: 50,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+              child: Text(
+                user.name.substring(0, 1).toUpperCase(),
+                style: const TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            user.name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            user.role.label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 40),
+          ListTile(
+            leading: const Icon(Icons.notifications_outlined),
+            title: const Text('Notices'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NoticeScreen()),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: const Text('Settings'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {},
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout, color: AppColors.danger),
+            title: const Text('Logout', style: TextStyle(color: AppColors.danger)),
+            onTap: () => auth.logout(),
+          ),
+        ],
       ),
     );
   }

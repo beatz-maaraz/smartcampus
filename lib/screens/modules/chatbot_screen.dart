@@ -75,10 +75,28 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('AI Chatbot')),
-      body: Column(
-        children: [
-          Expanded(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: kPad, vertical: 12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.primaryDark,
+                    child: Icon(Icons.smart_toy, color: Colors.white, size: 22),
+                  ),
+                  SizedBox(width: 12),
+                  Text('AI Assistant',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary)),
+                ],
+              ),
+            ),
+            Expanded(
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(kPad),
@@ -121,28 +139,68 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _bubble(String text, {required bool fromUser, bool typing = false}) {
-    return Align(
-      alignment: fromUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: const BoxConstraints(maxWidth: 280),
-        decoration: BoxDecoration(
-          color: fromUser ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: fromUser ? null : Border.all(color: Colors.grey.shade200),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: fromUser ? Colors.white : AppColors.textPrimary,
-            fontStyle: typing ? FontStyle.italic : FontStyle.normal,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment:
+            fromUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!fromUser)
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: CircleAvatar(
+                radius: 14,
+                backgroundColor: AppColors.primaryDark,
+                child: Icon(Icons.smart_toy, size: 16, color: Colors.white),
+              ),
+            ),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              constraints: const BoxConstraints(maxWidth: 280),
+              decoration: BoxDecoration(
+                color: fromUser ? AppColors.primary : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: Radius.circular(fromUser ? 20 : 4),
+                  bottomRight: Radius.circular(fromUser ? 4 : 20),
+                ),
+                boxShadow: [
+                  if (!fromUser)
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                ],
+              ),
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: fromUser ? Colors.white : AppColors.textPrimary,
+                  fontStyle: typing ? FontStyle.italic : FontStyle.normal,
+                  fontSize: 15,
+                ),
+              ),
+            ),
           ),
-        ),
+          if (fromUser)
+            const Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: CircleAvatar(
+                radius: 14,
+                backgroundColor: AppColors.accent,
+                child: Icon(Icons.person, size: 16, color: Colors.white),
+              ),
+            ),
+        ],
       ),
     );
   }

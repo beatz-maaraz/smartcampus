@@ -30,20 +30,29 @@ class SummaryTile extends StatelessWidget {
     // overflow. A horizontal layout uses far less vertical space and
     // stays safe across all of them.
     return Card(
+      elevation: 0,
+      color: color.withValues(alpha: 0.04),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(kRadius),
+        side: BorderSide(color: color.withValues(alpha: 0.15), width: 1),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(kRadius),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: color.withValues(alpha: 0.12),
-                child: Icon(icon, color: color, size: 16),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 20),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -52,14 +61,14 @@ class SummaryTile extends StatelessWidget {
                     Text(value,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold, color: color.withAlpha(220))),
                     const SizedBox(height: 2),
                     Text(label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary)),
+                            fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
@@ -89,34 +98,41 @@ class ModuleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(kRadius),
+        side: BorderSide(color: Colors.black.withValues(alpha: 0.05), width: 1),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(kRadius),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-          // FittedBox scales the icon+text down together to fit whatever
-          // height the grid cell actually gives this card, instead of a
-          // fixed padding/font size that overflows on tighter
-          // childAspectRatio values (see SummaryTile above for the same
-          // issue). BoxFit.scaleDown only shrinks, never grows, so normal-
-          // sized cells look exactly the same as before.
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: color, size: 30),
-                const SizedBox(height: 10),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ],
-            ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, 
+                    fontSize: 13, 
+                    color: AppColors.textPrimary, 
+                    height: 1.2),
+              ),
+            ],
           ),
         ),
       ),

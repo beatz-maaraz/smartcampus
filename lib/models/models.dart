@@ -425,6 +425,12 @@ class Incident {
   final DateTime timestamp;
   final IncidentStatus status;
   final List<String> photoUrls;
+  
+  final String? matchedVenueId;
+  final String? routedToFacultyId;
+  final String? routedToLabel;
+  final DateTime? acknowledgedAt;
+  final int? etaMinutes;
 
   Incident({
     required this.id,
@@ -433,6 +439,11 @@ class Incident {
     required this.timestamp,
     required this.status,
     this.photoUrls = const [],
+    this.matchedVenueId,
+    this.routedToFacultyId,
+    this.routedToLabel,
+    this.acknowledgedAt,
+    this.etaMinutes,
   });
 
   Map<String, dynamic> toJson() => {
@@ -442,6 +453,11 @@ class Incident {
         'timestamp': timestamp.toIso8601String(),
         'status': status.name,
         'photoUrls': photoUrls,
+        'matchedVenueId': matchedVenueId,
+        'routedToFacultyId': routedToFacultyId,
+        'routedToLabel': routedToLabel,
+        'acknowledgedAt': acknowledgedAt?.toIso8601String(),
+        'etaMinutes': etaMinutes,
       };
 
   factory Incident.fromJson(Map<String, dynamic> j) => Incident(
@@ -451,5 +467,10 @@ class Incident {
         timestamp: DateTime.parse(j['timestamp'] as String),
         status: IncidentStatus.values.byName(j['status'] as String),
         photoUrls: (j['photoUrls'] as List<dynamic>?)?.cast<String>() ?? [],
+        matchedVenueId: j['matchedVenueId'] as String?,
+        routedToFacultyId: j['routedToFacultyId'] as String?,
+        routedToLabel: j['routedToLabel'] as String?,
+        acknowledgedAt: j['acknowledgedAt'] == null ? null : DateTime.parse(j['acknowledgedAt'] as String),
+        etaMinutes: j['etaMinutes'] as int?,
       );
 }
