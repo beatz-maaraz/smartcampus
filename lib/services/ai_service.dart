@@ -369,4 +369,33 @@ Strict Rules:
           'admin to add "$name" to the verified Chemical Hub database.',
     );
   }
+
+  Future<String> getEmergencyGuidance(String severityType) async {
+    final prompt = 'A student has triggered an emergency alarm for type: $severityType. Please provide exactly 3-4 bullet points of immediate first-response safety guidance or first aid steps they should follow while campus security and faculty are en route. Keep it extremely concise, clear, and actionable.';
+    if (!ApiConfig.hasOpenRouterKey) {
+      return _getMockGuidance(severityType);
+    }
+    try {
+      final response = await _openRouter.sendMessage(messages: [
+        {'role': 'system', 'content': 'You are a campus safety first-responder bot. Give concise, actionable safety steps.'},
+        {'role': 'user', 'content': prompt},
+      ]);
+      return response;
+    } catch (_) {
+      return _getMockGuidance(severityType);
+    }
+  }
+
+  String _getMockGuidance(String type) {
+    switch (type.toLowerCase()) {
+      case 'medical':
+        return '• Remain calm and do not move if severely injured.\n• Apply pressure to any bleeding wounds using clean cloth.\n• If breathing is difficult, try to sit upright.\n• Stay in place; security and medical staff are en route.';
+      case 'fire':
+        return '• Evacuate the room immediately if there is smoke or flame.\n• Stay low to the ground to avoid inhaling smoke.\n• Do not use elevators; use nearest stairwell to exit.\n• Assemble in the designated outdoor safety zone.';
+      case 'threat':
+        return '• Find a secure room and lock/barricade the door.\n• Turn off lights and silence your mobile phone.\n• Keep low, hide behind solid objects, and stay quiet.\n• Do not open the door unless identity of security is confirmed.';
+      default:
+        return '• Move to a safe, well-lit public area if possible.\n• Stay calm and alert; help is on the way.\n• Keep your mobile phone active for location sharing.\n• Avoid confronting any source of danger.';
+    }
+  }
 }

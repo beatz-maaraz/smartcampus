@@ -79,6 +79,28 @@ class AdminHomeTab extends StatelessWidget {
     final report = data.globalAttendanceReport();
     final activeIncidents = data.incidents.where((i) => i.status != IncidentStatus.resolved).toList();
 
+    final hour = DateTime.now().hour;
+    String greeting = 'Good Evening';
+    IconData greetingIcon = Icons.nights_stay_outlined;
+    Color greetingColor = Colors.indigo;
+    if (hour < 12) {
+      greeting = 'Good Morning';
+      greetingIcon = Icons.wb_sunny_outlined;
+      greetingColor = Colors.orange;
+    } else if (hour < 17) {
+      greeting = 'Good Afternoon';
+      greetingIcon = Icons.wb_cloudy_outlined;
+      greetingColor = Colors.blue;
+    } else if (hour < 20) {
+      greeting = 'Good Evening';
+      greetingIcon = Icons.nights_stay_outlined;
+      greetingColor = Colors.indigo;
+    } else {
+      greeting = 'Good Night';
+      greetingIcon = Icons.bedtime_outlined;
+      greetingColor = Colors.deepPurple;
+    }
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
@@ -93,10 +115,46 @@ class AdminHomeTab extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Hello, ${user.name}',
-                        style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold)),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 1200),
+                      curve: Curves.easeOutExpo,
+                      builder: (context, value, child) {
+                        return Transform.translate(
+                          offset: Offset(0, 15 * (1 - value)),
+                          child: Opacity(
+                            opacity: (value * 1.5).clamp(0.0, 1.0),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 6.0),
+                                child: Icon(greetingIcon, color: greetingColor, size: 24),
+                              ),
+                            ),
+                            TextSpan(
+                              text: '$greeting, ',
+                              style: TextStyle(
+                                  fontSize: 22,
+                                  color: greetingColor,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            TextSpan(
+                              text: user.name,
+                              style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     const Text('Admin Dashboard',
                         style: TextStyle(

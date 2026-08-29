@@ -33,7 +33,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kRadius),
-          side: BorderSide(color: Colors.black.withValues(alpha: 0.05), width: 1),
+          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.1), width: 1),
         ),
         margin: const EdgeInsets.symmetric(vertical: 8),
       ),
@@ -82,7 +82,7 @@ class AppTheme {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: const Color(0xFF0F172A), // Dark slate
+      scaffoldBackgroundColor: const Color(0xFF09090B), // Deep Purple-Black
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         brightness: Brightness.dark,
@@ -104,7 +104,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
       ),
       cardTheme: CardThemeData(
-        color: const Color(0xFF1E293B), // Card dark slate
+        color: const Color(0xFF18181B), // Dark Zinc
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kRadius),
@@ -126,7 +126,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF1E293B),
+        fillColor: const Color(0xFF18181B),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
@@ -143,7 +143,7 @@ class AppTheme {
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: Color(0xFF0F172A),
+        backgroundColor: Color(0xFF09090B),
         selectedItemColor: AppColors.accent,
         unselectedItemColor: Colors.grey,
         elevation: 16,

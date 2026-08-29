@@ -28,12 +28,39 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
     final data = context.watch<CampusDataService>();
     final user = auth.currentUser!;
     
-    final myComplaints = data.complaints
-        .where((c) => c.studentId == user.id)
-        .where((c) => _searchQuery.isEmpty || 
-                      c.id.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                      c.title.toLowerCase().contains(_searchQuery.toLowerCase()))
+    final myComplaints = data.complaints.where((c) => c.studentId == user.id).toList();
+    final mySos = data.incidents.where((i) => i.userId.startsWith(user.id)).toList();
+
+    final allReports = [
+      ...myComplaints.map((c) => ReportItem(
+        id: c.id,
+        title: c.title,
+        description: c.description,
+        date: c.createdAt,
+        status: c.status,
+        type: 'Complaint',
+        remarks: c.facultyComments,
+        updatedBy: c.updatedBy,
+      )),
+      ...mySos.map((i) => ReportItem(
+        id: i.id.length > 8 ? 'SOS-${i.id.substring(i.id.length - 6)}' : i.id,
+        title: '${i.emergencyType ?? 'Emergency'} SOS Alert',
+        description: 'Location: Lat ${i.location.lat.toStringAsFixed(4)}, Lng ${i.location.lng.toStringAsFixed(4)}',
+        date: i.timestamp,
+        status: i.status.name.contains('resolved') ? 'Resolved' : 'Active',
+        type: 'SOS',
+        remarks: null,
+        updatedBy: null,
+      ))
+    ];
+
+    final filteredReports = allReports
+        .where((r) => _searchQuery.isEmpty || 
+                      r.id.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                      r.title.toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
+        
+    filteredReports.sort((a, b) => b.date.compareTo(a.date));
 
     return Scaffold(
       appBar: AppBar(
@@ -76,24 +103,25 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
             ),
           ),
           Expanded(
-            child: myComplaints.isEmpty
+            child: filteredReports.isEmpty
                 ? Center(
                     child: Text(
                       _searchQuery.isNotEmpty
-                          ? 'No complaints found matching "$_searchQuery".'
-                          : 'You have not submitted any complaints.',
+                          ? 'No reports found matching "$_searchQuery".'
+                          : 'You have not submitted any reports or alerts.',
                       style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    itemCount: myComplaints.length,
+                    itemCount: filteredReports.length,
                     itemBuilder: (ctx, idx) {
-                      final c = myComplaints[idx];
-                      final dateStr = DateFormat('MMM d, yyyy').format(c.incidentDate);
+                      final c = filteredReports[idx];
+                      final dateStr = DateFormat('MMM d, yyyy').format(c.date);
+                      final isSos = c.type == 'SOS';
                       
                       Color statusColor = AppColors.warning;
-                      if (c.status == 'Under Investigation') statusColor = AppColors.primary;
+                      if (c.status == 'Under Investigation' || c.status == 'Active') statusColor = AppColors.primary;
                       if (c.status == 'Resolved') statusColor = AppColors.safe;
                       if (c.status == 'Dismissed') statusColor = AppColors.textSecondary;
 
@@ -109,12 +137,19 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Ref ID: ${c.id}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                        fontSize: 16),
+                                  Row(
+                                    children: [
+                                      Icon(isSos ? Icons.emergency : Icons.shield_outlined, 
+                                           color: isSos ? AppColors.danger : AppColors.primary, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Ref ID: ${c.id}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primary,
+                                            fontSize: 16),
+                                      ),
+                                    ],
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
@@ -145,6 +180,8 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                                 c.description,
                                 style: const TextStyle(color: AppColors.textSecondary),
                               ),
+                              const SizedBox(height: 16),
+                              StatusTracker(status: c.status, isSos: isSos),
                               const SizedBox(height: 12),
                               Row(
                                 children: [
@@ -155,14 +192,15 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                                           color: AppColors.textSecondary, fontSize: 13)),
                                 ],
                               ),
-                              if (c.facultyComments != null && c.facultyComments!.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              if (c.remarks != null && c.remarks!.isNotEmpty) ...[
                                 const Divider(height: 24),
                                 Text(c.updatedBy != null ? 'Remarks by ${c.updatedBy}:' : 'Admin/Faculty Remarks:',
                                     style: const TextStyle(
                                         fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
                                 Text(
-                                  c.facultyComments!,
+                                  c.remarks!,
                                   style: const TextStyle(color: AppColors.textSecondary),
                                 ),
                               ]
@@ -174,6 +212,118 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ReportItem {
+  final String id;
+  final String title;
+  final String description;
+  final DateTime date;
+  final String status;
+  final String type;
+  final String? remarks;
+  final String? updatedBy;
+  
+  ReportItem({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.date,
+    required this.status,
+    required this.type,
+    this.remarks,
+    this.updatedBy,
+  });
+}
+
+class StatusTracker extends StatelessWidget {
+  final String status;
+  final bool isSos;
+
+  const StatusTracker({super.key, required this.status, this.isSos = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> steps = isSos
+        ? ['Active', 'Resolved']
+        : ['Pending', 'Investigation', 'Resolved'];
+
+    int currentStepIdx = 0;
+    if (status == 'Under Investigation') currentStepIdx = 1;
+    if (status == 'Resolved' || status == 'Dismissed') currentStepIdx = steps.length - 1;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: List.generate(steps.length * 2 - 1, (i) {
+          if (i.isOdd) {
+            // It's a line
+            final lineIndex = i ~/ 2;
+            final isLineActive = lineIndex < currentStepIdx;
+            
+            Color lineColor = AppColors.primary;
+            if (!isLineActive) lineColor = Colors.grey.shade300;
+
+            return Expanded(
+              child: Container(
+                margin: const EdgeInsets.only(top: 11),
+                height: 2,
+                color: lineColor,
+              ),
+            );
+          } else {
+            // It's a node
+            final index = i ~/ 2;
+            final isActive = index <= currentStepIdx;
+            
+            Color stepColor = AppColors.primary;
+            if (status == 'Dismissed' && index == steps.length - 1) {
+              stepColor = AppColors.textSecondary;
+            } else if (status == 'Resolved' && index == steps.length - 1) {
+              stepColor = AppColors.safe;
+            } else if (!isActive) {
+              stepColor = Colors.grey.shade300;
+            }
+            
+            String label = steps[index];
+            if (status == 'Dismissed' && index == steps.length - 1) {
+              label = 'Dismissed';
+            }
+
+            return Column(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isActive ? stepColor : Colors.white,
+                    border: Border.all(
+                      color: isActive ? stepColor : Colors.grey.shade300,
+                      width: 2,
+                    ),
+                  ),
+                  child: isActive
+                      ? const Icon(Icons.check, size: 14, color: Colors.white)
+                      : null,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                    color: isActive ? AppColors.textPrimary : Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            );
+          }
+        }),
       ),
     );
   }

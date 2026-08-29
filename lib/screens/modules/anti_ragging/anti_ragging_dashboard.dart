@@ -22,45 +22,15 @@ class AntiRaggingDashboard extends StatelessWidget {
       body: Consumer<CampusDataService>(
         builder: (ctx, data, _) {
           final complaints = data.complaints;
-          final activeIncidents = data.incidents.where((i) => i.status == IncidentStatus.triggered).toList();
+
           
           return CustomScrollView(
             slivers: [
-              // Active SOS Incidents Section
-              if (activeIncidents.isNotEmpty) ...[
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(16, 20, 16, 10),
-                    child: SectionHeader(title: '🚨 CRITICAL: Active SOS Incidents'),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        return IncidentCard(
-                          incident: activeIncidents[index],
-                          data: data,
-                        );
-                      },
-                      childCount: activeIncidents.length,
-                    ),
-                  ),
-                ),
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Divider(height: 32),
-                  ),
-                ),
-              ],
-              
               // Complaints Section
-              SliverToBoxAdapter(
+              const SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(16, activeIncidents.isNotEmpty ? 0 : 20, 16, 10),
-                  child: const SectionHeader(title: 'Anti-Ragging Complaints'),
+                  padding: EdgeInsets.fromLTRB(16, 20, 16, 10),
+                  child: SectionHeader(title: 'Anti-Ragging Complaints'),
                 ),
               ),
               if (complaints.isEmpty)
@@ -196,6 +166,13 @@ class AntiRaggingDashboard extends StatelessWidget {
     String currentStatus = c.status;
     final commentController = TextEditingController(text: c.facultyComments ?? '');
 
+    StudentProfile? student;
+    if (!c.isAnonymous) {
+      try {
+        student = data.students.firstWhere((s) => s.rollNumber == c.studentId);
+      } catch (_) {}
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -245,6 +222,13 @@ class AntiRaggingDashboard extends StatelessWidget {
                           children: [
                             const Text('Reported By', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                             Text(reportedBy, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            if (student != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Year: ${student.year} | Dept: ${student.department}',
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              ),
+                            ],
                           ],
                         ),
                       ),

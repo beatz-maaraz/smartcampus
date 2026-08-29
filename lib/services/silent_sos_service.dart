@@ -13,7 +13,7 @@ import 'package:geolocator/geolocator.dart';
 class SilentSosService {
   static StreamSubscription? _locationSub;
 
-  static Future<void> trigger(CampusDataService campusData, AppUser user) async {
+  static Future<Incident?> trigger(CampusDataService campusData, AppUser user, {String? emergencyType}) async {
     try {
       // 1. Location
       final pos = await LocationService.getCurrentPosition();
@@ -88,10 +88,17 @@ class SilentSosService {
         matchedVenueId: matchedVenueId,
         routedToFacultyId: routedToFacultyId,
         routedToLabel: routedToLabel,
+        emergencyType: emergencyType,
       );
 
       // Trigger backend
       await SosService.triggerIncident(incident);
+      
+      // SMS Fallback Console Mockup
+      debugPrint('[SMS Fallback] Emergency SMS notification sent successfully!');
+      debugPrint('[SMS Fallback] To: Campus Security (+91 94432 XXXXX) & Routed Faculty (${incident.routedToLabel})');
+      debugPrint("[SMS Fallback] Body: \"ALERT: Student ${user.name} (${user.id}) triggered a ${incident.emergencyType ?? 'Other'} emergency at Lat: ${pos.lat}, Lng: ${pos.lng}. Assigned Responder: ${incident.routedToLabel}.\"");
+
       campusData.addOrUpdateIncident(incident);
       
       // Start streaming location
@@ -128,8 +135,10 @@ class SilentSosService {
         debugPrint('Auto photo capture skipped on Web platform.');
       }
       
+      return incident;
     } catch (e) {
       debugPrint("Silent SOS trigger failed: $e");
+      return null;
     }
   }
 

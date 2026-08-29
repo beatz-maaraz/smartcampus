@@ -67,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).cardTheme.color ?? Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(kRadius),
                     boxShadow: [
                       BoxShadow(

@@ -67,6 +67,28 @@ class StudentHomeTab extends StatelessWidget {
     final pendingAssignments = data.pendingAssignmentCount;
     final todaysClasses = data.todaysTimetable();
 
+    final hour = DateTime.now().hour;
+    String greeting = 'Good Evening';
+    IconData greetingIcon = Icons.nights_stay_outlined;
+    Color greetingColor = Colors.indigo;
+    if (hour < 12) {
+      greeting = 'Good Morning';
+      greetingIcon = Icons.wb_sunny_outlined;
+      greetingColor = Colors.orange;
+    } else if (hour < 17) {
+      greeting = 'Good Afternoon';
+      greetingIcon = Icons.wb_cloudy_outlined;
+      greetingColor = Colors.blue;
+    } else if (hour < 20) {
+      greeting = 'Good Evening';
+      greetingIcon = Icons.nights_stay_outlined;
+      greetingColor = Colors.indigo;
+    } else {
+      greeting = 'Good Night';
+      greetingIcon = Icons.bedtime_outlined;
+      greetingColor = Colors.deepPurple;
+    }
+
     return Scaffold(
       floatingActionButton: Container(
         height: 64,
@@ -116,10 +138,46 @@ class StudentHomeTab extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Hello, ${user.name}',
-                        style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold)),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 1200),
+                      curve: Curves.easeOutExpo,
+                      builder: (context, value, child) {
+                        return Transform.translate(
+                          offset: Offset(0, 15 * (1 - value)),
+                          child: Opacity(
+                            opacity: (value * 1.5).clamp(0.0, 1.0),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 6.0),
+                                child: Icon(greetingIcon, color: greetingColor, size: 24),
+                              ),
+                            ),
+                            TextSpan(
+                              text: '$greeting, ',
+                              style: TextStyle(
+                                  fontSize: 22,
+                                  color: greetingColor,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            TextSpan(
+                              text: user.name,
+                              style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     const Text('Student Dashboard',
                         style: TextStyle(
@@ -345,6 +403,26 @@ class ProfileTab extends StatelessWidget {
     if (user == null) return const SizedBox.shrink();
     
     final myComplaints = data.complaints.where((c) => c.studentId == user.id).toList();
+    final mySos = data.incidents.where((i) => i.userId.startsWith(user.id)).toList();
+
+    final allReports = [
+      ...myComplaints.map((c) => {
+        'id': c.id,
+        'title': c.title,
+        'type': 'Complaint',
+        'date': c.createdAt,
+        'status': c.status,
+      }),
+      ...mySos.map((i) => {
+        'id': i.id.length > 8 ? 'SOS-${i.id.substring(i.id.length - 6)}' : i.id,
+        'title': '${i.emergencyType ?? 'Emergency'} SOS Alert',
+        'type': 'SOS',
+        'date': i.timestamp,
+        'status': i.status.name.contains('resolved') ? 'Resolved' : 'Active',
+      })
+    ];
+
+    allReports.sort((a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime));
 
     return SafeArea(
       child: ListView(
@@ -441,27 +519,31 @@ class ProfileTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const SectionHeader(title: 'Recent Complaints Status'),
+          const SectionHeader(title: 'Recent Reports Status'),
           const SizedBox(height: 8),
-          if (myComplaints.isEmpty)
+          if (allReports.isEmpty)
             const Card(
               elevation: 0,
               child: Padding(
                 padding: EdgeInsets.all(14),
                 child: Center(
                   child: Text(
-                    'No registered complaints.',
+                    'No registered reports.',
                     style: TextStyle(color: AppColors.textSecondary),
                   ),
                 ),
               ),
             )
           else
-            ...myComplaints.take(3).map((c) {
+            ...allReports.take(3).map((r) {
+              final isSos = r['type'] == 'SOS';
+              final status = r['status'] as String;
+              final date = r['date'] as DateTime;
+              
               Color statusColor = AppColors.warning;
-              if (c.status == 'Under Investigation') statusColor = AppColors.primary;
-              if (c.status == 'Resolved') statusColor = AppColors.safe;
-              if (c.status == 'Dismissed') statusColor = AppColors.textSecondary;
+              if (status == 'Under Investigation' || status == 'Active') statusColor = AppColors.primary;
+              if (status == 'Resolved') statusColor = AppColors.safe;
+              if (status == 'Dismissed') statusColor = AppColors.textSecondary;
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -471,10 +553,14 @@ class ProfileTab extends StatelessWidget {
                   side: BorderSide(color: Colors.grey.shade200),
                 ),
                 child: ListTile(
-                  title: Text(c.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  leading: Icon(
+                    isSos ? Icons.emergency : Icons.shield_outlined,
+                    color: isSos ? AppColors.danger : AppColors.primary
+                  ),
+                  title: Text(r['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(
-                    'Ref: ${c.id}\nStatus: ${c.status}',
-                    style: const TextStyle(fontSize: 13, height: 1.3),
+                    'Ref: ${r['id']}\nDate: ${date.day}/${date.month}/${date.year}\nStage: $status',
+                    style: const TextStyle(fontSize: 13, height: 1.4),
                   ),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -484,7 +570,7 @@ class ProfileTab extends StatelessWidget {
                       border: Border.all(color: statusColor),
                     ),
                     child: Text(
-                      c.status,
+                      status,
                       style: TextStyle(
                         color: statusColor,
                         fontWeight: FontWeight.bold,

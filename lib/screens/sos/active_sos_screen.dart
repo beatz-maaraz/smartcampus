@@ -1,281 +1,534 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:camera/camera.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import '../../models/models.dart';
 import '../../services/auth_service.dart';
 import '../../services/campus_data_service.dart';
-import '../../services/location_service.dart';
-import '../../services/sos_service.dart';
+import '../../services/silent_sos_service.dart';
+import '../../services/ai_service.dart';
+import '../../config/constants.dart';
 
 class ActiveSOSScreen extends StatefulWidget {
-  const ActiveSOSScreen({super.key});
+  final String emergencyType;
+  const ActiveSOSScreen({super.key, required this.emergencyType});
 
   @override
   State<ActiveSOSScreen> createState() => _ActiveSOSScreenState();
 }
 
 class _ActiveSOSScreenState extends State<ActiveSOSScreen> {
-  Incident? _incident;
-  bool _isInitializing = true;
-  StreamSubscription<GeoPoint>? _locationSub;
+  int _countdownSeconds = 5;
+  Timer? _countdownTimer;
+  bool _isCountdownActive = true;
+  String? _triggeredIncidentId;
+  String? _aiGuidance;
+  bool _loadingGuidance = false;
+  IncidentStatus? _lastStatus;
 
   @override
   void initState() {
     super.initState();
-    _triggerSOS();
+    _startCountdown();
+  }
+
+  void _startCountdown() {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_countdownSeconds > 1) {
+        setState(() {
+          _countdownSeconds--;
+        });
+      } else {
+        _countdownTimer?.cancel();
+        setState(() {
+          _isCountdownActive = false;
+        });
+        _triggerSOS();
+      }
+    });
   }
 
   Future<void> _triggerSOS() async {
     try {
-      final auth = context.read<AuthService>();
-      final user = auth.currentUser!;
+      final campusData = context.read<CampusDataService>();
+      final user = context.read<AuthService>().currentUser!;
 
-      // 1. Get high-accuracy initial fix
-      final pos = await LocationService.getCurrentPosition();
-
-      // 2. Create local incident
-      final incident = Incident(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        userId: user.id,
-        location: pos,
-        timestamp: DateTime.now(),
-        status: IncidentStatus.triggered,
+      // Trigger standard background SOS
+      final incident = await SilentSosService.trigger(
+        campusData,
+        user,
+        emergencyType: widget.emergencyType,
       );
 
-      setState(() {
-        _incident = incident;
-        _isInitializing = false;
-      });
-
-      // 3. Trigger backend POST
-      await SosService.triggerIncident(incident);
-
-      // Track globally in CampusDataService
-      if (mounted) {
-        context.read<CampusDataService>().addOrUpdateIncident(incident);
+      if (incident != null) {
+        setState(() {
+          _triggeredIncidentId = incident.id;
+        });
+        _loadAiGuidance();
       }
-
-      // Trigger automatic background camera captures
-      _captureAutoPhotos(incident.id);
-
-      // 4. Start streaming live location updates
-      final stream = LocationService.watchPosition();
-      SosService.streamLocationUpdates(incident.id, stream);
-
-      _locationSub = stream.listen((newPos) {
-        // We could update local state if we want to show it, but SosService handles sending
-      });
     } catch (e) {
-      setState(() {
-        _isInitializing = false;
-      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error triggering SOS: $e')),
+          SnackBar(content: Text('Error triggering alert: $e')),
         );
       }
     }
+  }
+
+  Future<void> _loadAiGuidance() async {
+    setState(() {
+      _loadingGuidance = true;
+    });
+    try {
+      final aiService = AiService(context.read<CampusDataService>());
+      final guidance = await aiService.getEmergencyGuidance(widget.emergencyType);
+      if (mounted) {
+        setState(() {
+          _aiGuidance = guidance;
+          _loadingGuidance = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loadingGuidance = false);
+      }
+    }
+  }
+
+  void _cancelCountdown() {
+    _countdownTimer?.cancel();
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('SOS Trigger cancelled (false alarm).'),
+        backgroundColor: Colors.grey,
+      ),
+    );
   }
 
   @override
   void dispose() {
-    _locationSub?.cancel();
+    _countdownTimer?.cancel();
     super.dispose();
-  }
-
-  Future<void> _captureAutoPhotos(String incidentId) async {
-    try {
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) return;
-
-      CameraDescription? backCamera;
-      CameraDescription? frontCamera;
-
-      for (var cam in cameras) {
-        if (cam.lensDirection == CameraLensDirection.back) {
-          backCamera = cam;
-        } else if (cam.lensDirection == CameraLensDirection.front) {
-          frontCamera = cam;
-        }
-      }
-
-      List<CameraDescription> sequence = [];
-      if (backCamera != null) sequence.add(backCamera);
-      if (frontCamera != null) sequence.add(frontCamera);
-      if (backCamera != null) sequence.add(backCamera);
-
-      if (sequence.isEmpty && cameras.isNotEmpty) {
-        sequence = [cameras.first, cameras.first, cameras.first];
-      }
-
-      for (var cam in sequence.take(3)) {
-        final controller = CameraController(
-          cam,
-          ResolutionPreset.medium,
-          enableAudio: false,
-        );
-
-        await controller.initialize();
-        // Give the camera a moment to adjust exposure/focus
-        await Future.delayed(const Duration(milliseconds: 600));
-
-        final xFile = await controller.takePicture();
-        await controller.dispose();
-
-        // Compress and upload
-        final File file = File(xFile.path);
-        final dir = await getTemporaryDirectory();
-        final targetPath =
-            '${dir.path}/auto_sos_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-        final compressedFile = await FlutterImageCompress.compressAndGetFile(
-          file.absolute.path,
-          targetPath,
-          quality: 70,
-          minWidth: 1280,
-          minHeight: 720,
-        );
-
-        if (compressedFile != null) {
-          if (mounted) {
-            final dataService = context.read<CampusDataService>();
-            final url = await dataService.uploadSOSPhoto(
-                File(compressedFile.path),
-                'sos_${incidentId}_${DateTime.now().millisecondsSinceEpoch}.jpg');
-
-            if (url != null) {
-              final currentIncident = dataService.incidents.firstWhere(
-                  (i) => i.id == incidentId,
-                  orElse: () => _incident!);
-              currentIncident.photoUrls.add(url);
-              dataService.addOrUpdateIncident(currentIncident);
-              if (mounted) {
-                setState(() {
-                  _incident = currentIncident;
-                });
-              }
-            }
-          }
-          await SosService.uploadPhoto(incidentId, File(compressedFile.path));
-        }
-      }
-    } catch (e) {
-      debugPrint("Auto-capture failed: $e");
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final campusData = context.watch<CampusDataService>();
+    Incident? activeIncident;
+    
+    if (_triggeredIncidentId != null) {
+      try {
+        activeIncident = campusData.incidents.firstWhere((i) => i.id == _triggeredIncidentId);
+      } catch (_) {}
+    }
+
+    final status = activeIncident?.status ?? IncidentStatus.triggered;
+    
+    if (_lastStatus == IncidentStatus.triggered && status == IncidentStatus.inProgress && activeIncident != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showAcknowledgementDialog(activeIncident!);
+      });
+    }
+    _lastStatus = status;
+    
+    // Dynamic background color mapping based on feedback loop status
+    Color backgroundColor;
+    if (status == IncidentStatus.resolved) {
+      backgroundColor = Colors.blueGrey.shade900;
+    } else if (status == IncidentStatus.inProgress) {
+      backgroundColor = Colors.teal.shade900; // Blue/Green banner color when Acknowledged!
+    } else {
+      backgroundColor = Colors.red.shade900; // Flashing alarm Red when pending
+    }
+
+    final themeColor = _getEmergencyTypeColor(widget.emergencyType);
+
     return Scaffold(
-      backgroundColor: Colors.red.shade900,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('SOS ACTIVE',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          _isCountdownActive ? 'PREPARING SOS' : 'EMERGENCY SOS ACTIVE',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+        ),
       ),
-      body: Center(
-        child: _isInitializing
-            ? const CircularProgressIndicator(color: Colors.white)
-            : _incident == null
-                ? Padding(
-                    padding: const EdgeInsets.all(24.0),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
+          child: _isCountdownActive
+              ? _buildCountdownUI(themeColor)
+              : _buildActiveSOSUI(activeIncident, themeColor, campusData),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCountdownUI(Color themeColor) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.warning_amber_rounded, size: 90, color: Colors.white),
+          const SizedBox(height: 24),
+          Text(
+            'Triggering SOS in $_countdownSeconds seconds...',
+            style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              'A critical safety alert is about to be sent. If this is a mistake, cancel now.',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 48),
+          SizedBox(
+            width: 200,
+            height: 200,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 160,
+                  height: 160,
+                  child: CircularProgressIndicator(
+                    value: _countdownSeconds / 5.0,
+                    strokeWidth: 8,
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    backgroundColor: Colors.white24,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _cancelCountdown,
+                  child: Container(
+                    width: 130,
+                    height: 130,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'CANCEL\n(False Alarm)',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveSOSUI(Incident? incident, Color themeColor, CampusDataService campusData) {
+    final status = incident?.status ?? IncidentStatus.triggered;
+    
+    // Dynamic status text calculations
+    String badgeText;
+    IconData headerIcon;
+    String titleText;
+    String subtitleText;
+    Color badgeColor;
+    
+    if (status == IncidentStatus.resolved) {
+      badgeText = 'RESOLVED';
+      headerIcon = Icons.verified_user_outlined;
+      titleText = 'Situation Resolved';
+      subtitleText = 'Safety confirmed. Return to home dashboard.';
+      badgeColor = Colors.teal;
+    } else if (status == IncidentStatus.inProgress) {
+      badgeText = 'RESPONDED';
+      headerIcon = Icons.check_circle_outline_rounded;
+      titleText = 'Help is on the Way!';
+      subtitleText = '${incident?.routedToLabel ?? "Faculty/Admin"} has acknowledged your emergency.';
+      badgeColor = Colors.teal;
+    } else {
+      badgeText = 'PENDING';
+      headerIcon = Icons.gpp_maybe_rounded;
+      titleText = 'Emergency SOS Dispatched';
+      subtitleText = 'Routing to nearest campus responder...';
+      badgeColor = Colors.red.shade700;
+    }
+
+    return ListView(
+      children: [
+        Center(
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      badgeText,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Icon(
+                headerIcon,
+                size: 72,
+                color: Colors.white,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                titleText,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  subtitleText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // Acknowledged explicit feedback loop banner card
+        if (status == IncidentStatus.inProgress) ...[
+          const SizedBox(height: 20),
+          Card(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 40),
+                  const SizedBox(width: 14),
+                  Expanded(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.error_outline,
-                            size: 100, color: Colors.white),
-                        const SizedBox(height: 24),
                         const Text(
-                          'Failed to trigger SOS',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold),
+                          'ACKNOWLEDGEMENT RECEIVED',
+                          style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Please ensure location permissions are granted and GPS is enabled, then try again.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
-                        ),
-                        const SizedBox(height: 32),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _isInitializing = true;
-                            });
-                            _triggerSOS();
-                          },
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Retry SOS'),
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.red.shade900,
-                            backgroundColor: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextButton.icon(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.arrow_back,
-                              color: Colors.white70),
-                          label: const Text('Go Back',
-                              style: TextStyle(color: Colors.white70)),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${incident?.routedToLabel ?? "Faculty/Admin"} has responded. Help is arriving in ~${incident?.etaMinutes ?? 3} mins.',
+                          style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.warning_amber_rounded,
-                          size: 100, color: Colors.white),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Help is on the way.',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Your live location is being shared with campus security.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 48),
-                      const CircularProgressIndicator(color: Colors.white),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Photos are being automatically captured and uploaded to security in the background...',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontStyle: FontStyle.italic),
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton.icon(
-                        onPressed: () {
-                          // Optionally, send a cancel/resolve request to the backend here
-                          Navigator.of(context).pop();
-                        },
-                        icon: const Icon(Icons.cancel, color: Colors.white70),
-                        label: const Text('Cancel SOS & Go Back',
-                            style: TextStyle(color: Colors.white70)),
-                      ),
-                    ],
                   ),
+                ],
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 20),
+        Card(
+          color: Colors.white.withValues(alpha: 0.1),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('EMERGENCY DETAILS', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: themeColor,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        widget.emergencyType.toUpperCase(),
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(color: Colors.white24, height: 24),
+                _buildInfoRow(Icons.pin_drop_outlined, 'Location status', 'Live GPS Tracking Enabled'),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  Icons.person_outline,
+                  'Assigned Responder',
+                  incident?.routedToLabel ?? 'Security Desk',
+                ),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  Icons.watch_later_outlined,
+                  'Response Status',
+                  status == IncidentStatus.resolved
+                      ? 'Situation Resolved'
+                      : (status == IncidentStatus.inProgress
+                          ? 'Assistance Dispatched (ETA: ${incident?.etaMinutes ?? 3} min)'
+                          : 'Routing to nearest Faculty...'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // AI First-Response guidance
+        Card(
+          color: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.psychology, color: AppColors.primary, size: 24),
+                    const SizedBox(width: 8),
+                    Text(
+                      'AI First-Response Guidance',
+                      style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
+                _loadingGuidance
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    : Text(
+                        _aiGuidance ?? 'Fetching safety steps...',
+                        style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+                      ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 32),
+        if (status != IncidentStatus.resolved)
+          ElevatedButton.icon(
+            onPressed: () {
+              // Mark incident as resolved / cancelled by student
+              if (incident != null) {
+                final resolved = Incident(
+                  id: incident.id,
+                  userId: incident.userId,
+                  location: incident.location,
+                  timestamp: incident.timestamp,
+                  photoUrls: incident.photoUrls,
+                  status: IncidentStatus.resolved,
+                  matchedVenueId: incident.matchedVenueId,
+                  routedToFacultyId: incident.routedToFacultyId,
+                  routedToLabel: incident.routedToLabel,
+                  acknowledgedAt: incident.acknowledgedAt,
+                  etaMinutes: incident.etaMinutes,
+                  emergencyType: incident.emergencyType,
+                );
+                campusData.addOrUpdateIncident(resolved);
+              }
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('SOS incident marked as resolved.')),
+              );
+            },
+            icon: const Icon(Icons.check),
+            label: const Text('I am Safe Now (Resolve SOS)'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.red.shade900,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white70, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _getEmergencyTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'medical emergency':
+        return Colors.red;
+      case 'fire':
+        return Colors.orange;
+      case 'threat/violence':
+        return Colors.amber.shade700;
+      default:
+        return Colors.grey.shade700;
+    }
+  }
+
+  void _showAcknowledgementDialog(Incident incident) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 28),
+            const SizedBox(width: 10),
+            const Text('HELP DISPATCHED', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          '${incident.routedToLabel ?? "Faculty/Admin"} has acknowledged your emergency and is arriving in ~${incident.etaMinutes ?? 3} minutes.\n\nKeep calm. Stay where you are.',
+          style: const TextStyle(fontSize: 15, height: 1.4),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('UNDERSTOOD'),
+          ),
+        ],
       ),
     );
   }

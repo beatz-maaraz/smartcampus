@@ -10,6 +10,8 @@ import '../modules/student_management_screen.dart';
 import '../modules/study_materials_screen.dart';
 import '../modules/chatbot_screen.dart';
 import '../modules/anti_ragging/anti_ragging_dashboard.dart';
+import '../sos/sos_dashboard.dart';
+import '../sos/sos_reports_screen.dart';
 import '../modules/notice_screen.dart';
 import '../modules/settings_screen.dart';
 
@@ -57,6 +59,28 @@ class FacultyHomeTab extends StatelessWidget {
     final user = auth.currentUser!;
     final todaysClasses = data.todaysTimetable();
 
+    final hour = DateTime.now().hour;
+    String greeting = 'Good Evening';
+    IconData greetingIcon = Icons.nights_stay_outlined;
+    Color greetingColor = Colors.indigo;
+    if (hour < 12) {
+      greeting = 'Good Morning';
+      greetingIcon = Icons.wb_sunny_outlined;
+      greetingColor = Colors.orange;
+    } else if (hour < 17) {
+      greeting = 'Good Afternoon';
+      greetingIcon = Icons.wb_cloudy_outlined;
+      greetingColor = Colors.blue;
+    } else if (hour < 20) {
+      greeting = 'Good Evening';
+      greetingIcon = Icons.nights_stay_outlined;
+      greetingColor = Colors.indigo;
+    } else {
+      greeting = 'Good Night';
+      greetingIcon = Icons.bedtime_outlined;
+      greetingColor = Colors.deepPurple;
+    }
+
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
@@ -72,10 +96,46 @@ class FacultyHomeTab extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Hello, ${user.name}',
-                          style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold)),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0.0, end: 1.0),
+                        duration: const Duration(milliseconds: 1200),
+                        curve: Curves.easeOutExpo,
+                        builder: (context, value, child) {
+                          return Transform.translate(
+                            offset: Offset(0, 15 * (1 - value)),
+                            child: Opacity(
+                              opacity: (value * 1.5).clamp(0.0, 1.0),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 6.0),
+                                  child: Icon(greetingIcon, color: greetingColor, size: 24),
+                                ),
+                              ),
+                              TextSpan(
+                                text: '$greeting, ',
+                                style: TextStyle(
+                                    fontSize: 22,
+                                    color: greetingColor,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                              TextSpan(
+                                text: user.name,
+                                style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       const Text('Faculty Dashboard',
                           style: TextStyle(
@@ -96,6 +156,115 @@ class FacultyHomeTab extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
+              
+              // CRITICAL SOS ALERT CARD (If routed to this Faculty)
+              Builder(
+                builder: (context) {
+                  Incident? routedIncident;
+                  try {
+                    routedIncident = data.incidents.firstWhere(
+                      (i) => i.status == IncidentStatus.triggered && (i.routedToFacultyId == user.id || i.routedToFacultyId == null || i.routedToFacultyId == "faculty"),
+                    );
+                  } catch (_) {}
+
+                  if (routedIncident == null) return const SizedBox.shrink();
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.red.shade900, Colors.red.shade600],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 26),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                'CRITICAL SOS ALERT ROUTED TO YOU',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white24,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                routedIncident.emergencyType ?? 'Other',
+                                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Student: ${routedIncident.userId.replaceAll('_', ' ')}',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Matched Classroom/Venue: ${routedIncident.matchedVenueId ?? "Nearest Room"}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              final ack = Incident(
+                                id: routedIncident!.id,
+                                userId: routedIncident.userId,
+                                location: routedIncident.location,
+                                timestamp: routedIncident.timestamp,
+                                photoUrls: routedIncident.photoUrls,
+                                status: IncidentStatus.inProgress, // assistance dispatched
+                                matchedVenueId: routedIncident.matchedVenueId,
+                                routedToFacultyId: user.id,
+                                routedToLabel: '${user.role.label} ${user.name}',
+                                acknowledgedAt: DateTime.now(),
+                                etaMinutes: 3,
+                                emergencyType: routedIncident.emergencyType,
+                              );
+                              data.addOrUpdateIncident(ack);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('SOS Acknowledged. Response sent to student.')),
+                              );
+                            },
+                             icon: const Icon(Icons.check_circle_outline),
+                            label: const Text(
+                              'ACKNOWLEDGE ALERT',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.red.shade900,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
               const SectionHeader(title: "Today's Reminder"),
               Card(
                 child: Padding(
@@ -186,13 +355,43 @@ class FacultyHomeTab extends StatelessWidget {
                     color: AppColors.primaryDark,
                     onTap: () => _postNotice(context, data, user),
                   ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const SectionHeader(title: 'Emergency & Reports'),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.5,
+                children: [
                   ModuleCard(
                     title: 'Anti-Ragging',
                     icon: Icons.shield_outlined,
-                    color: AppColors.danger,
+                    color: AppColors.primaryDark,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
                           builder: (_) => const AntiRaggingDashboard()),
+                    ),
+                  ),
+                  ModuleCard(
+                    title: 'SOS Alerts',
+                    icon: Icons.sos,
+                    color: AppColors.danger,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const SOSDashboard()),
+                    ),
+                  ),
+                  ModuleCard(
+                    title: 'SOS Report',
+                    icon: Icons.summarize_outlined,
+                    color: AppColors.primary,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const SOSReportsScreen()),
                     ),
                   ),
                 ],

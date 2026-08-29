@@ -431,6 +431,20 @@ class Incident {
   final String? routedToLabel;
   final DateTime? acknowledgedAt;
   final int? etaMinutes;
+  final String? emergencyType;
+
+  int get priorityLevel {
+    switch (emergencyType) {
+      case 'Medical Emergency':
+        return 1;
+      case 'Fire':
+      case 'Threat/Violence':
+        return 2;
+      case 'Other':
+      default:
+        return 3;
+    }
+  }
 
   Incident({
     required this.id,
@@ -444,6 +458,7 @@ class Incident {
     this.routedToLabel,
     this.acknowledgedAt,
     this.etaMinutes,
+    this.emergencyType,
   });
 
   Map<String, dynamic> toJson() => {
@@ -458,6 +473,7 @@ class Incident {
         'routedToLabel': routedToLabel,
         'acknowledgedAt': acknowledgedAt?.toIso8601String(),
         'etaMinutes': etaMinutes,
+        'emergencyType': emergencyType,
       };
 
   factory Incident.fromJson(Map<String, dynamic> j) => Incident(
@@ -472,6 +488,7 @@ class Incident {
         routedToLabel: j['routedToLabel'] as String?,
         acknowledgedAt: j['acknowledgedAt'] == null ? null : DateTime.parse(j['acknowledgedAt'] as String),
         etaMinutes: j['etaMinutes'] as int?,
+        emergencyType: j['emergencyType'] as String?,
       );
 }
 

@@ -20,14 +20,14 @@ extension UserRoleX on UserRole {
 }
 
 class AppColors {
-  static const primary = Color(0xFF6D28D9); // Violet 700
-  static const primaryDark = Color(0xFF4C1D95); // Violet 900
-  static const accent = Color(0xFF06B6D4); // Cyan 500
-  static const bgLight = Color(0xFFF8FAFC); // Slate 50
+  static const primary = Color(0xFF4F46E5); // Royal Indigo
+  static const primaryDark = Color(0xFF312E81); // Indigo 900
+  static const accent = Color(0xFF0EA5E9); // Bright Sky Blue
+  static const bgLight = Color(0xFFFDFDFF); // Soft Lavender-White
   static const cardLight = Colors.white;
   static const danger = Color(0xFFEF4444); // Red 500
   static const warning = Color(0xFFF59E0B); // Amber 500
-  static const safe = Color(0xFF22C55E); // Green 500
+  static const safe = Color(0xFF10B981); // Emerald 500
   static const textPrimary = Color(0xFF0F172A); // Slate 900
   static const textSecondary = Color(0xFF64748B); // Slate 500
 }
@@ -58,4 +58,26 @@ class CloudinaryConfig {
   static const cloudName = 'vzjyyvtp';
   static const apiKey = '544988352783325';
   static const apiSecret = 'i2aP4Pw52Y9Ahh5kAZVCsJRBcJU';
+}
+
+class EmergencyType {
+  static const medical = 'Medical';
+  static const fire = 'Fire';
+  static const threat = 'Threat';
+  static const other = 'Other';
+
+  static const all = [medical, fire, threat, other];
+
+  static String emoji(String type) {
+    switch (type) {
+      case medical:
+        return '🏥';
+      case fire:
+        return '🔥';
+      case threat:
+        return '⚠️';
+      default:
+        return '🚨';
+    }
+  }
 }

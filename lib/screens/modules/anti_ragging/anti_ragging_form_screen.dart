@@ -46,6 +46,7 @@ class _AntiRaggingFormScreenState extends State<AntiRaggingFormScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(Icons.check_circle, color: AppColors.safe),
@@ -73,6 +74,15 @@ class _AntiRaggingFormScreenState extends State<AntiRaggingFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+    final data = context.watch<CampusDataService>();
+    final user = auth.currentUser;
+
+    final studentProfile = user != null ? data.studentByRollNumber(user.id) : null;
+    final String studentName = studentProfile?.name ?? user?.name ?? 'Student';
+    final String studentDept = studentProfile?.department ?? user?.department ?? 'CSE';
+    final String studentYear = studentProfile?.year ?? '3rd Year';
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -96,6 +106,58 @@ class _AntiRaggingFormScreenState extends State<AntiRaggingFormScreen> {
               const Text(
                 'Your safety is our priority. You can choose to report this anonymously.',
                 style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+
+              // Dynamic Student Identity Card
+              Card(
+                color: _isAnonymous ? Colors.blueGrey.shade900 : Colors.blue.shade50,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isAnonymous ? Icons.security : Icons.person_pin_rounded,
+                        color: _isAnonymous ? Colors.greenAccent : AppColors.primary,
+                        size: 36,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isAnonymous ? '🕵️ ANONYMOUS MODE ACTIVE' : '👤 COMPLAINT DETAILS',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: _isAnonymous ? Colors.greenAccent : AppColors.primary,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Reporter: ${_isAnonymous ? "Anonymous Student" : studentName}',
+                              style: TextStyle(
+                                color: _isAnonymous ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                            if (!_isAnonymous) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Year: $studentYear | Dept: $studentDept',
+                                style: const TextStyle(color: Colors.black54, fontSize: 13),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
 
